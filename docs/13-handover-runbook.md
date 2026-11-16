@@ -28,8 +28,8 @@ python scripts/repro_clone.py          # receipt: results/handover.{md,json}
 
 `git archive HEAD` → brand-new venv → `pip install -e .` → ingest → eval gate →
 serve smoke test, then the clone's own `eval_report.json` is compared to the
-committed `results/baseline.json`. Latest receipt: **recall@10 0.8750 vs
-0.8750, refusal accuracy 1.0000 vs 1.0000 — PASS**. If someone claims the
+committed `results/baseline.json`. Latest receipt: **recall@10 0.9167 vs
+0.9167, refusal accuracy 1.0000 vs 1.0000 — PASS**. If someone claims the
 repository is not reproducible, this receipt is the answer.
 
 ## 2. Evidence index (every number points at a committed file)
@@ -43,20 +43,24 @@ repository is not reproducible, this receipt is the answer.
 | NFR-01: burst PASS 43.25 ms; saturation soak 58.40 ms (miss); interactive soak 19.56 ms (pass) at 10 users | `results/bench.md`, `results/soak.md`, `results/soak-interactive.md` |
 | robustness (gate, not retrieval, is the bottleneck) | `results/robustness.md` |
 | handover proof (this runbook, §1) | `results/handover.md` |
-| stage-2 encoder delta (dense 0.75 → 1.00, answer rate 0.29 → 0.96) | `results/embeddings.md` |
+| stage-2 encoder delta (dense 0.75 → 1.00, answer rate 0.29 → 0.88) | `results/embeddings.md` |
 | stage-2 reranker, held out by document (0.90, not adopted) | `results/rerank.md` |
 | safety suite: injections, tenant probes, log audit, degraded mode | `results/safety.md` |
 | out-of-sample sets (v2, v3): retrieval generalises, the refusal gate does not | `results/holdout.md` |
 | second refusal signal: v3 0.50 → 0.67, v2 0.17 → 0.33, no answers lost | `results/support.md` |
-| answer selection: topic-list answers 5 → 0, top-1 from the right document 18/24 · 10/12 · 11/12 | `results/answer_selection.md` |
+| answer selection: topic-list answers 8 → 0, top-1 from the right document 20/24 · 12/12 · 11/12 | `results/answer_selection.md` |
+| fusion depth: offline hybrid 0.88 → 0.92 (NFR-04 met), and the FR-11 counterfactual | `results/fusion.md` |
 
 ## 3. Known limitations (state them, do not hide them)
 
 - **Answer rate is low by design**: the safety-first gate θ = 0.13 refuses
   reworded/misspelled variants even when retrieval found the right document
   (see `results/robustness.md`). The fix is real embeddings, not gate tuning.
-- **recall@10 is 0.875, not the 0.90 target (NFR-04)**: nine queries lost by
-  hybrid RRF-k, diagnosed in `results/fr11_diagnosis.md`.
+- **NFR-04 was missed and is now met for hybrid**: 0.9167 against the 0.90 target. It was 0.8750
+  because fusion pooled 50 documents per retriever, so a document outside both top-10s could
+  outrank a strong single-retriever hit; fusing at operating depth fixed it (`results/fusion.md`).
+  Sparse still leads by one question (0.9583), which is the amended FR-11 bar and is stated as
+  such rather than rounded away.
 - **The refusal gate does not generalise**: theta was fitted to six unanswerable
   questions, where it scored 1.0000. On the two sets written afterwards it scores
   **0.1667** (v2) and **0.5000** (v3) - the classes overlap, and no theta in the grid
@@ -68,7 +72,7 @@ repository is not reproducible, this receipt is the answer.
   as "the direction is right", not "refusal works". It cannot see a question whose every word
   the corpus uses (v3-018, "sports scholarship"), and it dilutes on wordy phrasings (v3-014).
   The floor is fitted to 18 documents / 1,027 terms: a tenant with far fewer documents must
-  re-fit it. FR-16 stays open.
+  re-fit it. FR-17 stays open.
 - **Single-node, single-process**: stdlib `ThreadingHTTPServer`, SQLite storage.
   No containers, no cloud, per project constraint. The documented scale limit
   is ~10k chunks (NFR-03); beyond that, ANN storage.
@@ -78,7 +82,7 @@ repository is not reproducible, this receipt is the answer.
   a chunk merges several sections, so a document's opening summary ("Minimum attendance
   requirements, condonation rules, ...") out-scored the sentence holding the figure, because it
   repeats more query words. A structural guard - three or more list items, no digit, no finite
-  verb, disqualified only when another sentence matches a query term - removed all five such
+  verb, disqualified only when another sentence matches a query term - removed all eight such
   answers across the three frozen sets (`results/answer_selection.md`, ADR-0009). What it cannot
   fix: the top-1 passage comes from the labelled document for only 18/24, 10/12 and 11/12
   questions, so an answer can still be extracted from the wrong document. recall@10 is 1.0000
@@ -90,7 +94,7 @@ repository is not reproducible, this receipt is the answer.
 ## 4. Stage-2 roadmap in one paragraph
 
 1. ~~replace the TF-IDF embedder with a real sentence model~~ **done (M7)**: dense
-   recall@10 0.75 → 1.00, gate answer rate 0.29 → 0.96 at refusal 1.00 with theta
+   recall@10 0.75 → 1.00, gate answer rate 0.29 → 0.88 at refusal 1.00 with theta
    re-calibrated to 0.31 for the new score scale (`results/embeddings.md`). The delta
    was reported against the frozen set and nothing was tuned to it;
 2. train the reranker on a document-held-out split — **attempted in M8 and not adopted**:

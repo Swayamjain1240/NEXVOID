@@ -120,7 +120,7 @@ project is not a model-training project, and pretending otherwise invites the wr
 ## 4. System design: the decisions you will be asked to defend
 
 An interviewer's real question is "did you choose, or did you copy?" So the deliverable includes a
-record of **eight decisions, each with the alternative you rejected.** Format: choice → why →
+record of **ten decisions, each with the alternative you rejected.** Format: choice → why →
 what it cost → what would change your mind.
 
 | # | Decision | Rejected alternative | Cost you accepted | What would change your mind |
