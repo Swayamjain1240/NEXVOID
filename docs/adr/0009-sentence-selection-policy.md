@@ -46,14 +46,14 @@ requires keeping the defect. Amended before adoption, with both readings reporte
 | amended (decides) | echo → 0 **and** every replacement is a statement | pass |
 
 The amended criterion asks the question that matters — is the new answer still a statement of
-policy, or another list of headings? All five replacements carry a digit or a finite verb.
+policy, or another list of headings? All eight replacements carry a digit or a finite verb.
 
 ## Consequences
 
-- Heading-echo answers **5 → 0** across v1/v2/v3; 5 answers changed in total, 4 strictly better
-  and 1 (`v3-003`) losing only the echo's own words.
+- Heading-echo answers **8 → 0** across v1/v2/v3; 8 answers changed in total, and the report
+  lists each before/after pair rather than a score. One answer loses only the echo's own words.
 - The measured defect that remains is **ranking**, and the report states it in the same place: the
-  top-1 passage comes from the labelled document for 18/24, 10/12 and 11/12 questions, with
+  top-1 passage comes from the labelled document for 20/24, 12/12 and 11/12 questions, with
   recall@10 at 1.0000. The right passage is retrieved and out-ranked, so FR-11 owns the remaining
   wrong answers and no sentence rule can reach them.
 - The guard sees only the passage's **opening** sentence, because that is where a document's topic

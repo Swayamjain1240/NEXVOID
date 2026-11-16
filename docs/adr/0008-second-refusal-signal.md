@@ -49,7 +49,7 @@ and the report, not silently absorbed.
 - v3 refusal accuracy 0.5000 → 0.6667 and v2 0.1667 → 0.3333, with **no answerable question
   refused on any set**. On six-question sets that is one question each way; it is an improvement,
   not a repair.
-- The gate stays **open as FR-16**. Two failures survive, for different reasons: v3-014 fails on
+- The gate stays **open as FR-17** (refusal accuracy on unanswerable questions; FR-16, refusing below theta, is met). Two failures survive, for different reasons: v3-014 fails on
   dilution (three unknown words beside four known ones scores 0.429), and v3-018 uses only words
   the corpus contains ("sports", "scholarship", "attendance") and scores 0.000 novelty at 0.497
   confidence, above θ. Vocabulary cannot refute a question whose words all exist; that needs a
