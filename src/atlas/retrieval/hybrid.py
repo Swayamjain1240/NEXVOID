@@ -119,29 +119,31 @@ class _TenantView:
             )
         self._reranker.attach_features(features)
 
-    def search(self, query: str, *, k: int, mode: str) -> list[Passage]:
+    def search(self, query: str, *, k: int, mode: str, depth: int | None = None) -> list[Passage]:
         s = self._settings
+        depth = s.fusion_depth if depth is None else depth
         if mode == "sparse":
             return self._passages(self._sparse.search(tokenize(query), k=k)[:k])
         if mode == "dense":
             return self._passages(self._dense_search(query, k=k)[:k])
-        candidates, context = self.candidate_set(query)
+        candidates, context = self.candidate_set(query, depth=depth)
         reranked = self._reranker.rerank(
             query, candidates, k=min(k, s.rerank_candidates), context=context
         )
         return self._passages(reranked)
 
     def candidate_set(
-        self, query: str
+        self, query: str, *, depth: int | None = None
     ) -> tuple[list[tuple[int, float, str, str, str]], dict[str, dict[int, float]]]:
-        """Exactly what the reranker sees: fused candidates plus their score context.
-
-        Shared with the M8 trainer on purpose - training on a different feature
-        pipeline than serving is how a learned ranker silently stops working.
+        """What the reranker sees: fused candidates plus their score context (shared with the
+        M8 trainer on purpose - training on another pipeline is how a ranker stops working).
+        `depth` truncates each retriever's list before fusion (M16).
         """
         s = self._settings
         sparse_pool = self._sparse.search(tokenize(query), k=s.sparse_candidates)
         dense_pool = self._dense_search(query, k=s.dense_candidates)
+        if depth:
+            sparse_pool, dense_pool = sparse_pool[:depth], dense_pool[:depth]
         lists = [[idx for idx, _ in sparse_pool], [idx for idx, _ in dense_pool]]
         fused = rrf(lists, k=s.rrf_k, weights=(s.rrf_weight_sparse, s.rrf_weight_dense))
         fused_top = sorted(fused.items(), key=lambda item: (-item[1], item[0]))

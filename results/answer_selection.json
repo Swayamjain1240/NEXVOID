@@ -3,7 +3,7 @@
     "platform": "Windows-11-10.0.26300-SP0",
     "python": "3.12.10",
     "corpus": "corpus/campus (18 documents, frozen at M1)",
-    "commit": "c21190a",
+    "commit": "7a66a06",
     "regenerate_with": "python -m eval.run_eval"
   },
   "method": "Does the answer return the document's topic list? (M15, FR-13)\n\nThe defect this measures was found by reading an answer in the UI, not by a metric: asking about\nthe minimum attendance returned \"Minimum attendance requirements, condonation rules, medical\nleave and the consequences of falling below the attendance bar\" - the document's own table of\ncontents, which names more of the question's words than the sentence holding the 75% rule.\n\nTwo things are measured per question set:\n\n1. **Is the top-1 passage even from the right document?**  A selector cannot answer from a passage\n   that does not contain the answer, so this is separated out rather than hidden inside an\n   \"answer quality\" number.\n2. **Among passages from the right document, how often is the answer a heading echo?**  This is\n   the only subset on which the selector is being judged.\n\nThe rule, fixed before the run: the guard may be adopted only if (a) heading-echo answers fall to\nzero on all three sets, and (b) no question's answer loses query-term coverage - the new sentence\nmust cover at least as many of the question's content terms as the sentence it replaced.\n\n**Criterion (b) was wrong, and the report says so.** It fired on exactly one question (v3-003),\nwhere the \"lost\" coverage is the topic list's own words: the echo covers more query terms\nprecisely because it enumerates every topic in the document. Requiring an answer to keep that\ncoverage is requiring it to keep the bug. The amended rule, applied to the same measurement, is\n(b') every replacement is still a statement - it carries a number or a finite verb - rather than\nanother topic list. Both readings are printed; the original one is not quietly dropped.\n\nThe guard itself has no fitted threshold (`src/atlas/select.py`), so there is no floor to tune and\nnothing to hold out: this report is a before/after count over every answerable question in all\nthree sets.\n\nWrites `results/answer_selection.md` and `results/answer_selection.json`.",
@@ -11,11 +11,25 @@
   "sets": {
     "v1": {
       "questions": 24,
-      "top1_document_correct": 18,
-      "echo_before": 1,
+      "top1_document_correct": 20,
+      "echo_before": 3,
       "echo_after": 0,
-      "coverage_lost": [],
+      "coverage_lost": [
+        "a001"
+      ],
       "changed": [
+        {
+          "id": "a001",
+          "before": "Minimum attendance requirements, condonation rules, medical leave and the consequences of falling below the attendance bar. A course is counted only if the stud",
+          "after": "A course is counted only if the student is on its current registration list; attendance is not retroactively credited for courses added late. A student below 65",
+          "replacement_is_statement": true
+        },
+        {
+          "id": "a003",
+          "before": "Value, eligibility, renewal conditions and disbursement schedule of the merit scholarship. Renewal each year requires both of the following at the close of the ",
+          "after": "The merit scholarship is worth Rs 50,000 per academic year, credited twice, Rs 25,000 per semester, at the start of odd and even semesters respectively. Renewal",
+          "replacement_is_statement": true
+        },
         {
           "id": "a007",
           "before": "Limits on the number of attempts for a failed course, carry-forward rules and load restrictions for students with backlogs. A student may carry forward a maximu",
@@ -26,8 +40,8 @@
     },
     "v2": {
       "questions": 12,
-      "top1_document_correct": 10,
-      "echo_before": 2,
+      "top1_document_correct": 12,
+      "echo_before": 3,
       "echo_after": 0,
       "coverage_lost": [],
       "changed": [
@@ -42,6 +56,12 @@
           "before": "Requirements, application timing, credit load and exit rules for the minor and honours tracks. A student in honours whose CGPA falls below 8.0 is moved to the n",
           "after": "A student in honours whose CGPA falls below 8.0 is moved to the normal programme at the semester boundary, andhonours cannot be re-joined. Minor and honours may",
           "replacement_is_statement": true
+        },
+        {
+          "id": "v2-010",
+          "before": "Occupancy, charges, curfew, visitor policy and the conditions for hostel leave. Visitors, including parents, are permitted only on Saturday and Sunday between 5",
+          "after": "Hostel occupancy is per student, one bed one room, with the annual charge of Rs 90,000, covering accommodation and mess for the academic year. Visitors, includi",
+          "replacement_is_statement": true
         }
       ]
     },
@@ -50,14 +70,12 @@
       "top1_document_correct": 11,
       "echo_before": 2,
       "echo_after": 0,
-      "coverage_lost": [
-        "v3-003"
-      ],
+      "coverage_lost": [],
       "changed": [
         {
-          "id": "v3-003",
-          "before": "Limits on the number of attempts for a failed course, carry-forward rules and load restrictions for students with backlogs. A failed course may be attempted a m",
-          "after": "A failed course may be attempted a maximum of 3 times in the regular end-term cycle and 2 times in the supplementary cycle; that is 5 total attempts.",
+          "id": "v3-007",
+          "before": "Value, eligibility, renewal conditions and disbursement schedule of the merit scholarship. The amount is adjusted against tuition first; if tuition is already w",
+          "after": "The merit scholarship is worth Rs 50,000 per academic year, credited twice, Rs 25,000 per semester, at the start of odd and even semesters respectively. The amo",
           "replacement_is_statement": true
         },
         {

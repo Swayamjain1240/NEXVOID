@@ -1,0 +1,228 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, frozen at M1)",
+    "commit": "7a66a06",
+    "regenerate_with": "python -m eval.run_eval"
+  },
+  "method": "Fusion depth, and whether FR-11 can be met at all (M16).\n\nFR-11 asks that hybrid never score worse than the better of its two retrievers. On this\ninstrument that comparison has a structural problem: with the trained encoder the dense side is\nperfect on every frozen set (recall@10 1.0000), so \"not worse than the best single retriever\"\nmeans \"reproduce a perfect list\", and any fusion that reorders a dense hit fails by construction.\nWith the offline stand-in the sparse side is strongest, so the requirement asks fusion to follow\nwhichever retriever happens to win.\n\nTwo things are measured here, and reported separately:\n\n1. **The rule that ships.** Fusion pooled 50 documents per retriever. A document outside either\n   retriever's own top 10 could collect two weak votes and displace a strong single-retriever hit\n   - v1 `a009` is exactly that. Truncating each list to its operating depth before fusion\n   (`fusion_depth`, default 10) is measured against the untruncated rule on every set and encoder.\n\n2. **The counterfactual.** A \"dense-protect\" rule - RRF order, but no dense top-10 document may\n   fall out of the top 10 - is measured to show what meeting FR-11 literally requires. It\n   reproduces the dense list, i.e. it ceases to be fusion.\n\nThe adoption rule, written before the run: adopt the depth rule only if no set regresses and at\nleast one improves; and amend FR-11 only with the counterfactual on the table, never silently.\n\nWrites `results/fusion.md` and `results/fusion.json`.",
+  "k": 10,
+  "encoders": {
+    "hashed stand-in (default, offline)": {
+      "sparse": {
+        "v1": {
+          "recall": 0.9583333333333334,
+          "n": 24,
+          "misses": [
+            "a009"
+          ]
+        },
+        "v2": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        },
+        "v3": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        }
+      },
+      "dense": {
+        "v1": {
+          "recall": 0.75,
+          "n": 24,
+          "misses": [
+            "a001",
+            "a002",
+            "a010",
+            "a012",
+            "a021",
+            "a024"
+          ]
+        },
+        "v2": {
+          "recall": 0.75,
+          "n": 12,
+          "misses": [
+            "v2-009",
+            "v2-010",
+            "v2-011"
+          ]
+        },
+        "v3": {
+          "recall": 0.75,
+          "n": 12,
+          "misses": [
+            "v3-001",
+            "v3-005",
+            "v3-010"
+          ]
+        }
+      },
+      "hybrid, full pools": {
+        "v1": {
+          "recall": 0.8333333333333334,
+          "n": 24,
+          "misses": [
+            "a001",
+            "a009",
+            "a021",
+            "a024"
+          ]
+        },
+        "v2": {
+          "recall": 0.9166666666666666,
+          "n": 12,
+          "misses": [
+            "v2-004"
+          ]
+        },
+        "v3": {
+          "recall": 0.9166666666666666,
+          "n": 12,
+          "misses": [
+            "v3-010"
+          ]
+        }
+      },
+      "hybrid, depth 10 (adopted)": {
+        "v1": {
+          "recall": 0.9166666666666666,
+          "n": 24,
+          "misses": [
+            "a009",
+            "a021"
+          ]
+        },
+        "v2": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        },
+        "v3": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        }
+      },
+      "dense-protect (counterfactual)": {
+        "v1": {
+          "recall": 0.875,
+          "n": 24,
+          "misses": [
+            "a001",
+            "a021",
+            "a024"
+          ]
+        },
+        "v2": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        },
+        "v3": {
+          "recall": 0.9166666666666666,
+          "n": 12,
+          "misses": [
+            "v3-010"
+          ]
+        }
+      }
+    },
+    "trained (potion-base-8M)": {
+      "sparse": {
+        "v1": {
+          "recall": 0.9583333333333334,
+          "n": 24,
+          "misses": [
+            "a009"
+          ]
+        },
+        "v2": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        },
+        "v3": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        }
+      },
+      "dense": {
+        "v1": {
+          "recall": 1.0,
+          "n": 24,
+          "misses": []
+        },
+        "v2": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        },
+        "v3": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        }
+      },
+      "hybrid, full pools": {
+        "v1": {
+          "recall": 0.9583333333333334,
+          "n": 24,
+          "misses": [
+            "a009"
+          ]
+        },
+        "v2": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        },
+        "v3": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        }
+      },
+      "hybrid, depth 10 (adopted)": {
+        "v1": {
+          "recall": 0.9583333333333334,
+          "n": 24,
+          "misses": [
+            "a009"
+          ]
+        },
+        "v2": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        },
+        "v3": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        }
+      },
+      "dense-protect (counterfactual)": {
+        "v1": {
+          "recall": 1.0,
+          "n": 24,
+          "misses": []
+        },
+        "v2": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        },
+        "v3": {
+          "recall": 1.0,
+          "n": 12,
+          "misses": []
+        }
+      }
+    }
+  }
+}

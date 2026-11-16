@@ -3,7 +3,7 @@
     "platform": "Windows-11-10.0.26300-SP0",
     "python": "3.12.10",
     "corpus": "corpus/campus (18 documents, frozen at M1)",
-    "commit": "87a5222",
+    "commit": "7a66a06",
     "regenerate_with": "python -m eval.run_eval"
   },
   "modes": {
@@ -143,36 +143,36 @@
     },
     "hybrid": {
       "aggregate": {
-        "recall_at_10": 0.875,
-        "precision_at_5": 0.1833,
-        "precision_capped_at_5": 0.7917,
-        "ndcg_at_10": 0.7271,
-        "mrr": 0.6802
+        "recall_at_10": 0.9167,
+        "precision_at_5": 0.2,
+        "precision_capped_at_5": 0.875,
+        "ndcg_at_10": 0.6977,
+        "mrr": 0.6254
       },
       "intervals": {
         "recall_at_10": {
+          "n": 24,
+          "mean": 0.9167,
+          "ci_low": 0.7415,
+          "ci_high": 0.9768
+        },
+        "precision_capped_at_5": {
           "n": 24,
           "mean": 0.875,
           "ci_low": 0.69,
           "ci_high": 0.9566
         },
-        "precision_capped_at_5": {
-          "n": 24,
-          "mean": 0.7917,
-          "ci_low": 0.5953,
-          "ci_high": 0.9076
-        },
         "ndcg_at_10": {
           "n": 24,
-          "mean": 0.7271,
-          "ci_low": 0.5274,
-          "ci_high": 0.8642
+          "mean": 0.6977,
+          "ci_low": 0.4976,
+          "ci_high": 0.8432
         },
         "mrr": {
           "n": 24,
-          "mean": 0.6802,
-          "ci_low": 0.4803,
-          "ci_high": 0.8304
+          "mean": 0.6254,
+          "ci_low": 0.4275,
+          "ci_high": 0.7887
         }
       },
       "sweep": [
@@ -212,15 +212,15 @@
   "rrf_ablation": [
     {
       "k": 10,
-      "recall_at_10": 0.875
+      "recall_at_10": 0.9167
     },
     {
       "k": 60,
-      "recall_at_10": 0.875
+      "recall_at_10": 0.9167
     },
     {
       "k": 100,
-      "recall_at_10": 0.875
+      "recall_at_10": 0.9167
     }
   ]
 }

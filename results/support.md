@@ -25,21 +25,21 @@ question has novelty 0.4000. theta does not move.
 
 | set | baseline answer | baseline refusal | + floor answer | + floor refusal |
 |---|---|---|---|---|
-| v1 | 0.9583 | 1.0000 | 0.9583 | 1.0000 |
-| v2 | 0.9167 | 0.1667 | 0.9167 | 0.3333 |
+| v1 | 0.9583 | 0.8333 | 0.9583 | 0.8333 |
+| v2 | 0.9167 | 0.3333 | 0.9167 | 0.5000 |
 | v3 | 1.0000 | 0.5000 | 1.0000 | 0.6667 |
 
 ## Every floor, all three sets
 
 | floor | v1 answer | v1 refusal | v2 answer | v2 refusal | v3 answer | v3 refusal |
 |---|---|---|---|---|---|---|
-| 0.33 | 0.8750 | 1.0000 | 0.9167 | 0.5000 | 1.0000 | 0.8333 |
-| 0.40 | 0.9167 | 1.0000 | 0.9167 | 0.3333 | 1.0000 | 0.8333 |
-| 0.50 (fitted) | 0.9583 | 1.0000 | 0.9167 | 0.3333 | 1.0000 | 0.6667 |
-| 0.60 | 0.9583 | 1.0000 | 0.9167 | 0.1667 | 1.0000 | 0.5000 |
-| 0.67 | 0.9583 | 1.0000 | 0.9167 | 0.1667 | 1.0000 | 0.5000 |
-| 0.75 | 0.9583 | 1.0000 | 0.9167 | 0.1667 | 1.0000 | 0.5000 |
-| 1.00 | 0.9583 | 1.0000 | 0.9167 | 0.1667 | 1.0000 | 0.5000 |
+| 0.33 | 0.8750 | 0.8333 | 0.9167 | 0.6667 | 1.0000 | 0.8333 |
+| 0.40 | 0.9167 | 0.8333 | 0.9167 | 0.5000 | 1.0000 | 0.8333 |
+| 0.50 (fitted) | 0.9583 | 0.8333 | 0.9167 | 0.5000 | 1.0000 | 0.6667 |
+| 0.60 | 0.9583 | 0.8333 | 0.9167 | 0.3333 | 1.0000 | 0.5000 |
+| 0.67 | 0.9583 | 0.8333 | 0.9167 | 0.3333 | 1.0000 | 0.5000 |
+| 0.75 | 0.9583 | 0.8333 | 0.9167 | 0.3333 | 1.0000 | 0.5000 |
+| 1.00 | 0.9583 | 0.8333 | 0.9167 | 0.3333 | 1.0000 | 0.5000 |
 
 ## Decision
 
@@ -52,19 +52,19 @@ row is worth 0.1667 of refusal accuracy. Read it that way.
 
 | set | id | confidence | novelty | unseen terms | refused before | refused after |
 |---|---|---|---|---|---|---|
-| v1 | u001 | 0.281 | 0.200 | menu | yes | yes |
+| v1 | u001 | 0.328 | 0.200 | menu | no | no |
 | v1 | u002 | 0.273 | 0.167 | bus | yes | yes |
 | v1 | u003 | 0.281 | 0.400 | head, now | yes | yes |
 | v1 | u004 | 0.218 | 0.667 | password, wifi | yes | yes |
 | v1 | u005 | 0.299 | 0.333 | gym | yes | yes |
-| v1 | u006 | 0.237 | 0.500 | national, ranking | yes | yes |
+| v1 | u006 | 0.246 | 0.500 | national, ranking | yes | yes |
 | v2 | v2-u01 | 0.434 | 0.000 | - | no | no |
 | v2 | v2-u02 | 0.334 | 0.000 | - | no | no |
-| v2 | v2-u03 | 0.328 | 0.286 | professor, structure | no | no |
-| v2 | v2-u04 | 0.259 | 0.400 | accreditation, naac | yes | yes |
+| v2 | v2-u03 | 0.302 | 0.286 | professor, structure | yes | yes |
+| v2 | v2-u04 | 0.219 | 0.400 | accreditation, naac | yes | yes |
 | v2 | v2-u05 | 0.406 | 0.500 | degree, duplicate, graduating | no | yes |
-| v2 | v2-u06 | 0.424 | 0.333 | cleaning, submitting | no | no |
-| v3 | v3-013 | 0.223 | 0.600 | fi, password, wi | yes | yes |
+| v2 | v2-u06 | 0.408 | 0.333 | cleaning, submitting | no | no |
+| v3 | v3-013 | 0.214 | 0.600 | fi, password, wi | yes | yes |
 | v3 | v3-014 | 0.340 | 0.429 | car, parking, permit | no | no |
 | v3 | v3-015 | 0.290 | 0.500 | gym, membership | yes | yes |
 | v3 | v3-016 | 0.305 | 0.250 | canteen | yes | yes |

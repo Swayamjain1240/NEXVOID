@@ -197,11 +197,14 @@ def main() -> int:
         f"({total_before} → {total_after}) and changes {changed} answers in total.",
         "",
         "The first column matters as much as the second. A selector cannot answer from a passage",
-        "that does not contain the answer, and the top-1 passage is from the labelled document for",
-        "only 18 of v1's 24 questions (10/12 on v2, 11/12 on v3). That is a ranking problem, not a",
-        "selection one: recall@10 is 1.0000 on the appended sets, so the right passage is",
-        "retrieved and then out-ranked, which is the open FR-11 territory and not something a",
-        "sentence scoring rule can reach.",
+        "that does not contain the answer, and the top-1 passage is from the labelled document for "
+        f"{findings['v1']['top1_document_correct']} of v1's "
+        f"{findings['v1']['questions']} questions "
+        f"({findings['v2']['top1_document_correct']}/{findings['v2']['questions']} on v2, "
+        f"{findings['v3']['top1_document_correct']}/{findings['v3']['questions']} on v3). That is "
+        "a ranking problem, not a selection one: recall@10 is 1.0000 on the appended sets, so the",
+        "right passage is retrieved and then out-ranked, which is FR-11 territory in",
+        "`results/fusion.md` and not something a sentence scoring rule can reach.",
         "",
         "## Every answer the guard changed",
         "",

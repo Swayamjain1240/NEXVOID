@@ -156,9 +156,17 @@ class NullReranker:
 
     name = "none"
 
+    def __init__(self, idf=None, *, settings: Settings = SETTINGS) -> None:
+        # The gate still needs idf coverage of the chosen passage, so the null ranker borrows
+        # the blend's arithmetic without its ordering (M16).
+        self._coverage_of = Reranker(idf or {}, settings=settings)
+
+    def coverage(self, query: str, text: str) -> float:
+        return self._coverage_of.coverage(query, text)
+
     def attach_features(self, features: dict[int, tuple]) -> None:
         """Accepted and ignored, so the tenant view can wire every ranker the same way."""
-        self._features = features
+        self._chunk_features = features
 
     def rerank(
         self,
@@ -181,7 +189,7 @@ def build_reranker(
     config edit away from production.
     """
     if settings.rerank_kind == "none":
-        return NullReranker()
+        return NullReranker(idf, settings=settings)
     if settings.rerank_kind != "learned":
         return Reranker(idf, settings=settings)
     model = load_model(settings.rerank_model_path)

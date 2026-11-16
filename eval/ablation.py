@@ -46,7 +46,9 @@ CONTROL = "hybrid"
 # Both encoders, because the stage-2 claim is an *interaction*: the hand-weighted blend only
 # double-counts once the dense side carries real meaning (M7). One encoder would hide that.
 ENCODERS = (
-    ("hashed stand-in (default, offline)", SETTINGS.embedder_kind),
+    # Literal, not SETTINGS.embedder_kind: the default is read from ATLAS_EMBEDDER at import,
+    # so an environment variable would make both tables measure the same encoder (M16).
+    ("hashed stand-in (default, offline)", "hashed-tfidf-d1024"),
     ("trained encoder (potion-base-8M)", "potion-base-8M"),
 )
 

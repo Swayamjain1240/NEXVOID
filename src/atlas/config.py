@@ -37,6 +37,10 @@ class Settings:
     # fusion + rerank (ATL-TDD-001 s.5-s.6); rrf_k is swept by the ablation
     rrf_k: int = 60
     rrf_k_candidates: tuple[int, ...] = (10, 60, 100)
+    # M16: each retriever votes only with documents it would itself return. Fusing pools of
+    # 50 let items outside either list's top 10 collect two weak votes and displace a strong
+    # single-retriever hit (v1 a009, results/fusion.md). 0 disables the truncation.
+    fusion_depth: int = 10
     # per-retriever evidence weights in the fusion blend; 1.0/1.0 is classic RRF,
     # and the stage-2 ablation (results/embeddings.md) is the only thing that may move them
     rrf_weight_sparse: float = 1.0
@@ -48,7 +52,11 @@ class Settings:
     # M8: "learned" loads committed weights trained on a document-held-out split, but the
     # loader only honours a file marked "adopted": true, so an experiment cannot ship by
     # accident. "blend" is the MVP hand weighting and the fallback in every other case.
-    rerank_kind: str = "learned"  # "none" keeps fusion order: the ablation's control arm
+    # M16: the shipped default is fusion order. `results/ablation.md` measures the blend as a
+    # -0.0416 recall change once the dense side carries meaning, and `results/rerank.md` refused
+    # the learned weights out of sample; `results/fusion.md` re-measures all three on three sets.
+    # "none" keeps fusion order; "blend" and "learned" stay available and measured.
+    rerank_kind: str = "none"
     rerank_model_path: str = "models/rerank-v1.json"
     # eval-only switch, set by eval/ablation.py to score the *unadopted* weights in place.
     # Production stays false, so the adoption gate in build_reranker is never bypassed by

@@ -3,7 +3,7 @@
     "platform": "Windows-11-10.0.26300-SP0",
     "python": "3.12.10",
     "corpus": "corpus/campus (18 documents, frozen at M1)",
-    "commit": "3574d4c",
+    "commit": "7a66a06",
     "regenerate_with": "python -m eval.run_eval"
   },
   "method": "The second refusal signal, measured (M14, FR-16).\n\nOne question, asked before the numbers were produced: does adding a *corpus-vocabulary* signal to\nthe confidence gate refuse more unanswerable questions without refusing answerable ones?\n\nThe rules, written down before the run:\n\n1. **Fit on v1.** The only tuned quantity is `floor`, the share of a question's *content* terms\n   (question words excluded) that the corpus must have never seen for the request to be refused\n   regardless of confidence. The fitted value is the smallest floor in the grid strictly above\n   the highest novelty observed among v1's answerable questions - the most aggressive floor that\n   still leaves every tuned-set answer untouched. Nothing else is tuned, and theta does not move.\n   The floor only ever *adds* a refusal, and only when at least `MIN_UNSEEN` (2) content terms are\n   unseen: one unused modifier is not a missing topic. Both rules are fixed before the run - the\n   first version of this measurement counted \"what\" and \"how\" as unknown words, which produced a\n   novelty score that was partly a count of pronouns; the report says so rather than hiding it.\n2. **Decide on v3.** v2 is reported as a replication; v3 is the set the decision is read from.\n3. **Adopt only if all four hold:** v3 refusal accuracy improves over the confidence-only\n   baseline, v3 answer rate does not fall, v2 answer rate does not fall, and v1 answer rate stays\n   at 1.0000. A signal that buys refusals with answers is not a signal, it is a threshold raise\n   with extra steps - which `results/holdout.md` already shows does not work.\n\nThe signal itself is in `src/atlas/support.py`; this file only measures it, and it does so from\nconfidences computed once, so every row of the floor grid is the same measurement re-bucketed.\n\nWrites `results/support.md` and `results/support.json`.",
@@ -25,11 +25,11 @@
   "baseline": {
     "v1": {
       "answer_rate": 0.9583,
-      "refusal_accuracy": 1.0
+      "refusal_accuracy": 0.8333
     },
     "v2": {
       "answer_rate": 0.9167,
-      "refusal_accuracy": 0.1667
+      "refusal_accuracy": 0.3333
     },
     "v3": {
       "answer_rate": 1.0,
@@ -39,11 +39,11 @@
   "adopted": {
     "v1": {
       "answer_rate": 0.9583,
-      "refusal_accuracy": 1.0
+      "refusal_accuracy": 0.8333
     },
     "v2": {
       "answer_rate": 0.9167,
-      "refusal_accuracy": 0.3333
+      "refusal_accuracy": 0.5
     },
     "v3": {
       "answer_rate": 1.0,
@@ -55,11 +55,11 @@
       "floor": 0.33,
       "v1": {
         "answer_rate": 0.875,
-        "refusal_accuracy": 1.0
+        "refusal_accuracy": 0.8333
       },
       "v2": {
         "answer_rate": 0.9167,
-        "refusal_accuracy": 0.5
+        "refusal_accuracy": 0.6667
       },
       "v3": {
         "answer_rate": 1.0,
@@ -70,11 +70,11 @@
       "floor": 0.4,
       "v1": {
         "answer_rate": 0.9167,
-        "refusal_accuracy": 1.0
+        "refusal_accuracy": 0.8333
       },
       "v2": {
         "answer_rate": 0.9167,
-        "refusal_accuracy": 0.3333
+        "refusal_accuracy": 0.5
       },
       "v3": {
         "answer_rate": 1.0,
@@ -85,11 +85,11 @@
       "floor": 0.5,
       "v1": {
         "answer_rate": 0.9583,
-        "refusal_accuracy": 1.0
+        "refusal_accuracy": 0.8333
       },
       "v2": {
         "answer_rate": 0.9167,
-        "refusal_accuracy": 0.3333
+        "refusal_accuracy": 0.5
       },
       "v3": {
         "answer_rate": 1.0,
@@ -100,11 +100,11 @@
       "floor": 0.6,
       "v1": {
         "answer_rate": 0.9583,
-        "refusal_accuracy": 1.0
+        "refusal_accuracy": 0.8333
       },
       "v2": {
         "answer_rate": 0.9167,
-        "refusal_accuracy": 0.1667
+        "refusal_accuracy": 0.3333
       },
       "v3": {
         "answer_rate": 1.0,
@@ -115,11 +115,11 @@
       "floor": 0.67,
       "v1": {
         "answer_rate": 0.9583,
-        "refusal_accuracy": 1.0
+        "refusal_accuracy": 0.8333
       },
       "v2": {
         "answer_rate": 0.9167,
-        "refusal_accuracy": 0.1667
+        "refusal_accuracy": 0.3333
       },
       "v3": {
         "answer_rate": 1.0,
@@ -130,11 +130,11 @@
       "floor": 0.75,
       "v1": {
         "answer_rate": 0.9583,
-        "refusal_accuracy": 1.0
+        "refusal_accuracy": 0.8333
       },
       "v2": {
         "answer_rate": 0.9167,
-        "refusal_accuracy": 0.1667
+        "refusal_accuracy": 0.3333
       },
       "v3": {
         "answer_rate": 1.0,
@@ -145,11 +145,11 @@
       "floor": 1.0,
       "v1": {
         "answer_rate": 0.9583,
-        "refusal_accuracy": 1.0
+        "refusal_accuracy": 0.8333
       },
       "v2": {
         "answer_rate": 0.9167,
-        "refusal_accuracy": 0.1667
+        "refusal_accuracy": 0.3333
       },
       "v3": {
         "answer_rate": 1.0,
@@ -345,13 +345,13 @@
     "v1": [
       {
         "id": "u001",
-        "confidence": 0.2806,
+        "confidence": 0.3277,
         "novelty": 0.2,
         "unseen": [
           "menu"
         ],
-        "refused_by_confidence": true,
-        "refused_after": true
+        "refused_by_confidence": false,
+        "refused_after": false
       },
       {
         "id": "u002",
@@ -397,7 +397,7 @@
       },
       {
         "id": "u006",
-        "confidence": 0.2375,
+        "confidence": 0.2465,
         "novelty": 0.5,
         "unseen": [
           "national",
@@ -426,18 +426,18 @@
       },
       {
         "id": "v2-u03",
-        "confidence": 0.3282,
+        "confidence": 0.3025,
         "novelty": 0.2857,
         "unseen": [
           "professor",
           "structure"
         ],
-        "refused_by_confidence": false,
-        "refused_after": false
+        "refused_by_confidence": true,
+        "refused_after": true
       },
       {
         "id": "v2-u04",
-        "confidence": 0.2587,
+        "confidence": 0.2192,
         "novelty": 0.4,
         "unseen": [
           "accreditation",
@@ -460,7 +460,7 @@
       },
       {
         "id": "v2-u06",
-        "confidence": 0.4242,
+        "confidence": 0.4078,
         "novelty": 0.3333,
         "unseen": [
           "cleaning",
@@ -473,7 +473,7 @@
     "v3": [
       {
         "id": "v3-013",
-        "confidence": 0.2233,
+        "confidence": 0.2136,
         "novelty": 0.6,
         "unseen": [
           "fi",

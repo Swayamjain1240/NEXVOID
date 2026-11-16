@@ -12,19 +12,19 @@ would hide exactly the thing this table is for.
 
 | configuration | recall@10 (95% CI) | Δ recall | p@5 capped | nDCG@10 | MRR |
 |---|---|---|---|---|---|
-| sparse | 0.9583 [0.7976, 0.9926] | +0.1250 | 0.8750 | 0.8216 | 0.7876 |
-| dense | 0.7500 [0.5510, 0.8800] | -0.0833 | 0.5208 | 0.4709 | 0.4016 |
-| hybrid | 0.8333 [0.6415, 0.9332] | 0.0000 | 0.8333 | 0.6553 | 0.5965 |
-| hybrid + blend | 0.8750 [0.6900, 0.9566] | +0.0417 | 0.7917 | 0.7271 | 0.6802 |
-| hybrid + learned | 0.9167 [0.7415, 0.9768] | +0.0834 | 0.8750 | 0.8084 | 0.7782 |
+| sparse | 0.9583 [0.7976, 0.9926] | +0.0416 | 0.8750 | 0.8216 | 0.7876 |
+| dense | 0.7500 [0.5510, 0.8800] | -0.1667 | 0.5208 | 0.4709 | 0.4016 |
+| hybrid | 0.9167 [0.7415, 0.9768] | 0.0000 | 0.8750 | 0.6977 | 0.6254 |
+| hybrid + blend | 0.9167 [0.7415, 0.9768] | 0.0000 | 0.9167 | 0.7398 | 0.6806 |
+| hybrid + learned | 0.9583 [0.7976, 0.9926] | +0.0416 | 0.9167 | 0.8279 | 0.7907 |
 
 Misses at k=10, by configuration:
 
 - sparse: a009
 - dense: a001, a002, a010, a012, a021, a024
-- hybrid: a001, a009, a021, a024
-- hybrid + blend: a001, a021, a024
-- hybrid + learned: a009, a021
+- hybrid: a009, a021
+- hybrid + blend: a009, a021
+- hybrid + learned: a009
 
 ## trained encoder (potion-base-8M)
 
@@ -32,9 +32,9 @@ Misses at k=10, by configuration:
 |---|---|---|---|---|---|
 | sparse | 0.9583 [0.7976, 0.9926] | 0.0000 | 0.8750 | 0.8216 | 0.7876 |
 | dense | 1.0000 [0.8620, 1.0000] | +0.0417 | 0.9167 | 0.8779 | 0.8451 |
-| hybrid | 0.9583 [0.7976, 0.9926] | 0.0000 | 0.9167 | 0.8868 | 0.8692 |
+| hybrid | 0.9583 [0.7976, 0.9926] | 0.0000 | 0.9167 | 0.8881 | 0.8705 |
 | hybrid + blend | 0.9167 [0.7415, 0.9768] | -0.0416 | 0.9167 | 0.8494 | 0.8229 |
-| hybrid + learned | 0.9583 [0.7976, 0.9926] | 0.0000 | 0.9167 | 0.8566 | 0.8281 |
+| hybrid + learned | 0.9583 [0.7976, 0.9926] | 0.0000 | 0.9167 | 0.8720 | 0.8490 |
 
 Misses at k=10, by configuration:
 
@@ -46,13 +46,13 @@ Misses at k=10, by configuration:
 
 ## What the two tables say together
 
-**hashed stand-in (default, offline).** Fusion 0.8333 vs best single retriever 0.9583 (sparse 0.9583, dense 0.7500). The blend scores 0.8750 (+0.0417 vs control) and the learned weights 0.9167 (+0.0834). Here the blend *helps*, because with a hashed encoder it is the only semantic-ish signal left after fusion.
+**hashed stand-in (default, offline).** Fusion 0.9167 vs best single retriever 0.9583 (sparse 0.9583, dense 0.7500). The blend scores 0.9167 (0.0000 vs control) and the learned weights 0.9583 (+0.0416). Here the blend *helps*, because with a hashed encoder it is the only semantic-ish signal left after fusion.
 
 **trained encoder (potion-base-8M).** Fusion 0.9583 vs best single retriever 1.0000 (sparse 0.9583, dense 1.0000). The blend scores 0.9167 (-0.0416 vs control) and the learned weights 0.9583 (0.0000). Here the blend *costs* recall: with a real encoder it double-counts the lexical evidence and demotes correct chunks — the M7 diagnosis, measured by holding fusion fixed rather than inferred from fusion weights.
 
 ## Where the FR-11 gap actually comes from
 
-- **hashed stand-in (default, offline).** Best single retriever 0.9583; fusion alone 0.8333 (-0.1250); best reranked configuration 0.9167 (-0.0416). Fusion alone already trails it, and reranking does not close the gap - so the shortfall is not the ranker's alone.
+- **hashed stand-in (default, offline).** Best single retriever 0.9583; fusion alone 0.9167 (-0.0416); best reranked configuration 0.9583 (0.0000). Hybrid matches or beats the best single retriever here.
 - **trained encoder (potion-base-8M).** Best single retriever 1.0000; fusion alone 0.9583 (-0.0417); best reranked configuration 0.9583 (-0.0417). Fusion alone already trails it, and reranking does not close the gap - so the shortfall is not the ranker's alone.
 
 FR-11 stays open in the README for any row above where hybrid trails the best single

@@ -64,11 +64,11 @@ CONFIGS = (
     ("sparse", "sparse", {"rerank_kind": "none"}),
     ("dense", "dense", {"rerank_kind": "none"}),
     ("hybrid (fusion only)", "hybrid", {"rerank_kind": "none"}),
-    ("hybrid + blend (shipped)", "hybrid", {"rerank_kind": "blend"}),
+    ("hybrid + blend", "hybrid", {"rerank_kind": "blend"}),
     ("hybrid + learned", "hybrid", {"rerank_kind": "learned", "rerank_allow_unadopted": True}),
 )
-SHIPPED = "hybrid + blend (shipped)"
 FUSION = "hybrid (fusion only)"
+SHIPPED = FUSION  # M16: fusion order is the shipped default; the blend is measured below
 WEIGHT_GRID = ((1.0, 1.0), (1.5, 1.0), (2.0, 1.0), (1.0, 0.5), (1.0, 1.5), (1.5, 0.5))
 
 
