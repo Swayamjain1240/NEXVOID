@@ -50,6 +50,7 @@ repository is not reproducible, this receipt is the answer.
 | second refusal signal: v3 0.50 → 0.67, v2 0.17 → 0.33, no answers lost | `results/support.md` |
 | answer selection: topic-list answers 8 → 0, top-1 from the right document 20/24 · 12/12 · 11/12 | `results/answer_selection.md` |
 | fusion depth: offline hybrid 0.88 → 0.92 (NFR-04 met), and the FR-11 counterfactual | `results/fusion.md` |
+| phrase-level novelty on a fresh v4 set: refused, it also refuses answerable questions | `results/phrase.md` |
 
 ## 3. Known limitations (state them, do not hide them)
 
@@ -72,7 +73,11 @@ repository is not reproducible, this receipt is the answer.
   as "the direction is right", not "refusal works". It cannot see a question whose every word
   the corpus uses (v3-018, "sports scholarship"), and it dilutes on wordy phrasings (v3-014).
   The floor is fitted to 18 documents / 1,027 terms: a tenant with far fewer documents must
-  re-fit it. FR-17 stays open.
+  re-fit it. M17 tried the next rung - word pairs instead of words - on a freshly written v4
+  set: it refuses every unanswerable question **and** three of twelve answerable ones, because
+  question phrasing is not corpus phrasing at either level (`results/phrase.md`, ADR-0011). Not
+  adopted. FR-17 stays open, and the next candidate is a semantic check this project rules out of
+  scope rather than a third vocabulary rule.
 - **Single-node, single-process**: stdlib `ThreadingHTTPServer`, SQLite storage.
   No containers, no cloud, per project constraint. The documented scale limit
   is ~10k chunks (NFR-03); beyond that, ANN storage.
