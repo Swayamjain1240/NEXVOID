@@ -1,41 +1,34 @@
-"""M5 HTTP JSON API (ATL-SwDD; SRS FR-19, NFR-01, NFR-09, NFR-14): stdlib only.
+"""M5 HTTP JSON API (ATL-SwDD; SRS FR-19..FR-23, NFR-01, NFR-09, NFR-14): stdlib only.
 
-Routes:
-    GET /                     one-page demo (web/demo.html), no auth
-    GET /v1/healthz           liveness, no auth
-    GET /v1/ask?q=...         the product: cited answer or refusal (JSON)
+Routes (the handler lives in `handler.py`):
+    GET  /                 one-page demo (web/demo.html), no auth
+    GET  /health           liveness; alias of /v1/healthz (FR-20)
+    GET  /v1/healthz       liveness, no auth
+    GET  /v1/ask?q=...     the product: cited answer or refusal (JSON)
+    POST /v1/ask           the same answer from {"query", "mode"} (FR-20)
+    GET  /v1/metrics       process counters and latency summary (FR-20)
+
 Headers:
     Authorization: Bearer <token>   required when ATLAS_API_TOKEN is set in the env
     X-Tenant: <tenant>              defaults to the configured default tenant
 
-Contract details the tests pin: empty/stopword-only query -> 400 with a
-machine-readable error code (FR-19); wrong token -> 401 AUTH_REQUIRED; unknown
-tenant -> a deliberate refusal JSON (never leaks another tenant's data, NFR-09);
-every answer response exposes four stage timings (NFR-14).
+Contract details the tests pin: empty/stopword-only query -> 400 with a machine-readable error
+code (FR-19); wrong token -> 401 AUTH_REQUIRED; unknown tenant -> a deliberate refusal JSON (never
+leaks another tenant's data, NFR-09); every answer response exposes four stage timings (NFR-14);
+an unsupported method or route -> 405/404 with the same error envelope, never an HTML page (FR-23).
 """
 
 from __future__ import annotations
 
-import json
 import os
-import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from http.server import ThreadingHTTPServer
 
-from .answer import answer_query
 from .config import SETTINGS, Settings
-from .interfaces import AtlasError, InputError
-from .obs import redact
+from .handler import make_handler
 from .retrieval import HybridIndex
 from .store import Store
 
-ROOT = Path(__file__).resolve().parents[2]  # src/atlas/server.py -> model 1/
-DEMO_PAGE = ROOT / "web" / "demo.html"
-
-_ERROR_CODES = {
-    InputError: ("INPUT_INVALID", 400),
-}
+__all__ = ["ServerState", "make_handler", "make_server", "serve"]
 
 
 class ServerState:
@@ -45,117 +38,6 @@ class ServerState:
         self.settings = settings
         self.store = Store(db_path, settings=settings)
         self.index = HybridIndex(self.store, settings=settings)
-
-
-def make_handler(state: ServerState) -> type:
-    """Binds the shared state once; the handler class itself stays stateless."""
-
-    class AtlasHandler(BaseHTTPRequestHandler):
-        protocol_version = "HTTP/1.1"
-        disable_nagle_algorithm = True  # M5 load-test finding: kills the ~40ms tail stalls
-
-        def do_GET(self) -> None:
-            started = time.perf_counter()
-            parsed = urlparse(self.path)
-            if parsed.path == "/":
-                self._demo()
-            elif parsed.path == "/v1/healthz":
-                self._health()
-            elif parsed.path == "/v1/ask":
-                self._ask(parsed, started)
-            else:
-                self._error("NOT_FOUND", 404, "unknown route; see /v1/healthz")
-
-        def _ask(self, parsed, started: float) -> None:
-            token = self.headers.get("Authorization", "")
-            if state.settings.api_token and token != f"Bearer {state.settings.api_token}":
-                self._error("AUTH_REQUIRED", 401, "missing or wrong bearer token")
-                return
-            params = parse_qs(parsed.query)
-            query = (params.get("q", [""])[0]).strip()
-            tenant = self.headers.get("X-Tenant", state.settings.default_tenant)
-            try:
-                answer = answer_query(
-                    state.index, query, tenant_id=tenant, settings=state.settings
-                )
-            except InputError as error:
-                self._error("INPUT_INVALID", 400, str(error))
-                return
-            except AtlasError as error:  # never leak internals, always a code
-                self._error("SERVER_ERROR", 500, error.__class__.__name__)
-                return
-            payload = {
-                "query": answer.query,
-                "text": answer.text,
-                "refused": answer.refused,
-                "confidence": answer.confidence,
-                "citations": [
-                    {
-                        "doc_id": c.doc_id,
-                        "chunk_id": c.chunk_id,
-                        "title": c.title,
-                        "section": c.section,
-                        "snippet": c.snippet,
-                    }
-                    for c in answer.citations
-                ],
-                "mode": answer.mode,
-                "degraded": answer.degraded,
-                # "" when answered; otherwise why, so a client can say the true thing instead
-                # of blaming the threshold for a topic the corpus does not carry (M14).
-                "refusal_reason": answer.refusal_reason,
-                "unseen": list(answer.unseen),
-                "trace_id": answer.trace_id,
-                "timings": {
-                    **answer.timings_ms,
-                    # total_ms is the sum of the stages, so it must not be added again here:
-                    # doing so made this field negative and quietly lied about the overhead.
-                    "serialize_ms": round((time.perf_counter() - started) * 1000.0, 3)
-                    - sum(v for k, v in answer.timings_ms.items() if k != "total_ms"),
-                    "total_ms": round((time.perf_counter() - started) * 1000.0, 3),
-                },
-            }
-            self._json(200, payload)
-
-        def _health(self) -> None:
-            # theta and the encoder go out with liveness because the UI has to draw the
-            # refusal line at the threshold this process is actually running, not a
-            # number copied into the page from a report.
-            self._json(200, {
-                "status": "ok",
-                "tenants_served": len(state.index._views),
-                "embedder": state.settings.embedder_kind,
-                "theta": state.settings.theta,
-                "mode": "hybrid",
-            })
-
-        def _demo(self) -> None:
-            if not DEMO_PAGE.exists():
-                self._error("NOT_FOUND", 404, "demo page missing from web/demo.html")
-                return
-            body = DEMO_PAGE.read_bytes()
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-
-        def _error(self, code: str, status: int, message: str) -> None:
-            self._json(status, {"error": {"code": code, "message": message}})
-
-        def _json(self, status: int, payload: dict) -> None:
-            body = json.dumps(payload).encode("utf-8")
-            self.send_response(status)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-
-        def log_message(self, fmt: str, *args) -> None:
-            # NFR-11: the request line carries the user's question, so it is redacted here
-            print(redact(f"[atlas] {self.client_address[0]} {fmt % args}"))
-
-    return AtlasHandler
 
 
 # The stdlib default listen backlog is 5, which drops a burst of connections outright.
