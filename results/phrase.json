@@ -1,0 +1,1483 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, frozen at M1)",
+    "commit": "286cc58",
+    "regenerate_with": "python -m eval.run_eval"
+  },
+  "method": "Phrase-level novelty, measured on a fourth frozen set (M17, FR-17).\n\nOne question, asked before the numbers were produced: does pairing the question's content words\ncatch the refusals the single-word signal misses, without refusing questions the corpus *can*\nanswer?\n\n`results/support.md` names the two survivors it cannot reach: v3-018 uses only attested words\n(\"sports\", \"scholarship\", \"attendance\") and scores 0.000 novelty, and v3-014 dilutes three unknown\nwords with four known ones. The first is the target here; the second is a counting problem the\nreport keeps visible rather than hiding.\n\nThe rules, written down before the run:\n\n1. **A fresh set decides.** v1\u2013v3 have all been read by earlier phases, so a new signal judged on\n   them would be judged on questions it was invented after. `eval/golden_set_v4.jsonl` appends 12\n   answerable and 6 unanswerable questions written for this run, closing the file at 30 questions\n   across four sets.\n2. **Fit on v1.** The only tuned quantity is the phrase floor: the smallest grid value strictly\n   above the highest phrase novelty observed among v1's answerable questions. theta and the M14\n   word floor do not move.\n3. **Decide on v4.** Adopt only if v4 refusal accuracy improves over the shipped gate, and the\n   answer rate does not fall on v1, v2, v3 or v4. v2 and v3 are reported as replications, not as\n   evidence the decision is read from.\n\nWrites `results/phrase.md` and `results/phrase.json`.",
+  "encoder": "potion-base-8M",
+  "theta": 0.31,
+  "word_floor": 0.5,
+  "corpus_phrases": 3224,
+  "fitted_floor": 1.0,
+  "fit": {
+    "rule": "smallest grid floor strictly above the highest phrase novelty among v1 answerables",
+    "worst_v1_answerable_phrase_novelty": 1.0,
+    "eligible_floors": []
+  },
+  "baseline": {
+    "v1": {
+      "answer_rate": 0.9583,
+      "refusal_accuracy": 0.8333
+    },
+    "v2": {
+      "answer_rate": 0.9167,
+      "refusal_accuracy": 0.5
+    },
+    "v3": {
+      "answer_rate": 1.0,
+      "refusal_accuracy": 0.6667
+    },
+    "v4": {
+      "answer_rate": 1.0,
+      "refusal_accuracy": 0.6667
+    }
+  },
+  "adopted": {
+    "v1": {
+      "answer_rate": 0.5,
+      "refusal_accuracy": 0.8333
+    },
+    "v2": {
+      "answer_rate": 0.8333,
+      "refusal_accuracy": 0.8333
+    },
+    "v3": {
+      "answer_rate": 0.9167,
+      "refusal_accuracy": 1.0
+    },
+    "v4": {
+      "answer_rate": 0.75,
+      "refusal_accuracy": 1.0
+    }
+  },
+  "grid": [
+    {
+      "floor": 0.33,
+      "v1": {
+        "answer_rate": 0.0417,
+        "refusal_accuracy": 1.0
+      },
+      "v2": {
+        "answer_rate": 0.0,
+        "refusal_accuracy": 1.0
+      },
+      "v3": {
+        "answer_rate": 0.0,
+        "refusal_accuracy": 1.0
+      },
+      "v4": {
+        "answer_rate": 0.0,
+        "refusal_accuracy": 1.0
+      }
+    },
+    {
+      "floor": 0.4,
+      "v1": {
+        "answer_rate": 0.0417,
+        "refusal_accuracy": 1.0
+      },
+      "v2": {
+        "answer_rate": 0.0,
+        "refusal_accuracy": 1.0
+      },
+      "v3": {
+        "answer_rate": 0.0,
+        "refusal_accuracy": 1.0
+      },
+      "v4": {
+        "answer_rate": 0.0833,
+        "refusal_accuracy": 1.0
+      }
+    },
+    {
+      "floor": 0.5,
+      "v1": {
+        "answer_rate": 0.0417,
+        "refusal_accuracy": 1.0
+      },
+      "v2": {
+        "answer_rate": 0.0,
+        "refusal_accuracy": 1.0
+      },
+      "v3": {
+        "answer_rate": 0.1667,
+        "refusal_accuracy": 1.0
+      },
+      "v4": {
+        "answer_rate": 0.0833,
+        "refusal_accuracy": 1.0
+      }
+    },
+    {
+      "floor": 0.6,
+      "v1": {
+        "answer_rate": 0.0833,
+        "refusal_accuracy": 1.0
+      },
+      "v2": {
+        "answer_rate": 0.0833,
+        "refusal_accuracy": 1.0
+      },
+      "v3": {
+        "answer_rate": 0.4167,
+        "refusal_accuracy": 1.0
+      },
+      "v4": {
+        "answer_rate": 0.1667,
+        "refusal_accuracy": 1.0
+      }
+    },
+    {
+      "floor": 0.67,
+      "v1": {
+        "answer_rate": 0.1667,
+        "refusal_accuracy": 1.0
+      },
+      "v2": {
+        "answer_rate": 0.5,
+        "refusal_accuracy": 1.0
+      },
+      "v3": {
+        "answer_rate": 0.4167,
+        "refusal_accuracy": 1.0
+      },
+      "v4": {
+        "answer_rate": 0.4167,
+        "refusal_accuracy": 1.0
+      }
+    },
+    {
+      "floor": 0.75,
+      "v1": {
+        "answer_rate": 0.1667,
+        "refusal_accuracy": 1.0
+      },
+      "v2": {
+        "answer_rate": 0.5,
+        "refusal_accuracy": 1.0
+      },
+      "v3": {
+        "answer_rate": 0.5833,
+        "refusal_accuracy": 1.0
+      },
+      "v4": {
+        "answer_rate": 0.5,
+        "refusal_accuracy": 1.0
+      }
+    },
+    {
+      "floor": 1.0,
+      "v1": {
+        "answer_rate": 0.5,
+        "refusal_accuracy": 0.8333
+      },
+      "v2": {
+        "answer_rate": 0.8333,
+        "refusal_accuracy": 0.8333
+      },
+      "v3": {
+        "answer_rate": 0.9167,
+        "refusal_accuracy": 1.0
+      },
+      "v4": {
+        "answer_rate": 0.75,
+        "refusal_accuracy": 1.0
+      }
+    }
+  ],
+  "decision": {
+    "adopted": false,
+    "improves_v4_refusal": true,
+    "keeps_answer_rate": false
+  },
+  "phrase_novelty": {
+    "v1": {
+      "answerable": {
+        "min": 0.2,
+        "max": 1.0,
+        "mean": 0.8619
+      },
+      "unanswerable": {
+        "min": 0.6667,
+        "max": 1.0,
+        "mean": 0.8611
+      }
+    },
+    "v2": {
+      "answerable": {
+        "min": 0.5,
+        "max": 1.0,
+        "mean": 0.7417
+      },
+      "unanswerable": {
+        "min": 0.75,
+        "max": 1.0,
+        "mean": 0.9167
+      }
+    },
+    "v3": {
+      "answerable": {
+        "min": 0.4286,
+        "max": 1.0,
+        "mean": 0.6923
+      },
+      "unanswerable": {
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0
+      }
+    },
+    "v4": {
+      "answerable": {
+        "min": 0.3333,
+        "max": 1.0,
+        "mean": 0.7352
+      },
+      "unanswerable": {
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0
+      }
+    }
+  },
+  "detailed": {
+    "v1": [
+      {
+        "id": "a001",
+        "answerable": true,
+        "confidence": 0.427,
+        "phrase_novelty": 0.8,
+        "unseen": [
+          "attendance stay",
+          "enrolled relaxation",
+          "relaxation sick",
+          "stay enrolled"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "a002",
+        "answerable": true,
+        "confidence": 0.4038,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "after relaxation",
+          "attendance fell",
+          "below sixty",
+          "course attendance",
+          "even after",
+          "fell below",
+          "five percent",
+          "percent even",
+          "sixty five"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "a003",
+        "answerable": true,
+        "confidence": 0.5573,
+        "phrase_novelty": 0.5714,
+        "unseen": [
+          "cgpa attendance",
+          "condition keeping",
+          "keeping merit",
+          "scholarship next"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "a004",
+        "answerable": true,
+        "confidence": 0.4857,
+        "phrase_novelty": 0.8571,
+        "unseen": [
+          "based tuition",
+          "income limit",
+          "limit qualify",
+          "qualify someone",
+          "someone based",
+          "tuition concession"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "a005",
+        "answerable": true,
+        "confidence": 0.4674,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "actually cover",
+          "based scheme",
+          "cover still",
+          "doe based",
+          "has paid",
+          "scheme actually",
+          "still has",
+          "tuition doe"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "a006",
+        "answerable": true,
+        "confidence": 0.3919,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "chance clear",
+          "clear one",
+          "failed subject",
+          "one failed",
+          "total chance"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "a007",
+        "answerable": true,
+        "confidence": 0.5343,
+        "phrase_novelty": 0.2,
+        "unseen": [
+          "carry next"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "a008",
+        "answerable": true,
+        "confidence": 0.4337,
+        "phrase_novelty": 0.875,
+        "unseen": [
+          "after attempt",
+          "chance after",
+          "course over",
+          "doe cost",
+          "last chance",
+          "one last",
+          "over doe"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "a009",
+        "answerable": true,
+        "confidence": 0.397,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "after semester",
+          "exam sign",
+          "re exam",
+          "semester re"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "a010",
+        "answerable": true,
+        "confidence": 0.5299,
+        "phrase_novelty": 0.6,
+        "unseen": [
+          "fee supplementary",
+          "one cycle",
+          "paper paper"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "a011",
+        "answerable": true,
+        "confidence": 0.3732,
+        "phrase_novelty": 0.8571,
+        "unseen": [
+          "course have",
+          "date semester",
+          "drop course",
+          "erased record",
+          "have erased",
+          "till date"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "a012",
+        "answerable": true,
+        "confidence": 0.3559,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "cgpa move",
+          "different programme",
+          "move different"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "a013",
+        "answerable": true,
+        "confidence": 0.4425,
+        "phrase_novelty": 0.75,
+        "unseen": [
+          "night hostel",
+          "resident inside",
+          "time night"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "a014",
+        "answerable": true,
+        "confidence": 0.4242,
+        "phrase_novelty": 0.8,
+        "unseen": [
+          "charge year",
+          "cover mess",
+          "doe cover",
+          "year doe"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "a015",
+        "answerable": true,
+        "confidence": 0.3842,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "book issued",
+          "issued once",
+          "once day"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "a016",
+        "answerable": true,
+        "confidence": 0.3136,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "appear campu",
+          "campu interview",
+          "cgpa doe",
+          "doe someone",
+          "else checked",
+          "interview else",
+          "someone appear"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "a017",
+        "answerable": true,
+        "confidence": 0.3466,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "after taking",
+          "better paying",
+          "condition still",
+          "job offer",
+          "offer condition",
+          "one job",
+          "paying company",
+          "sit better",
+          "still sit",
+          "taking one"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "a018",
+        "answerable": true,
+        "confidence": 0.5105,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "allowed credited",
+          "credited internship",
+          "internship minimum",
+          "minimum duration",
+          "semester allowed"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "a019",
+        "answerable": true,
+        "confidence": 0.4572,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "additional mark",
+          "credit earn",
+          "earn finish",
+          "finish minor",
+          "mark credit"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "a020",
+        "answerable": true,
+        "confidence": 0.493,
+        "phrase_novelty": 0.875,
+        "unseen": [
+          "carry 10",
+          "count passed",
+          "grade carry",
+          "grade still",
+          "lowest grade",
+          "point lowest",
+          "still count"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "a021",
+        "answerable": true,
+        "confidence": 0.3059,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "cost long",
+          "doe cost",
+          "exam mark",
+          "have re",
+          "long have",
+          "re verify",
+          "verify exam"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "a022",
+        "answerable": true,
+        "confidence": 0.4496,
+        "phrase_novelty": 0.6667,
+        "unseen": [
+          "during admission",
+          "round during"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "a023",
+        "answerable": true,
+        "confidence": 0.3851,
+        "phrase_novelty": 0.8333,
+        "unseen": [
+          "complaint have",
+          "day doe",
+          "doe student",
+          "have settled",
+          "student complaint"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "a024",
+        "answerable": true,
+        "confidence": 0.3594,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "day time",
+          "institute counsellor",
+          "see institute",
+          "time see"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "u001",
+        "answerable": false,
+        "confidence": 0.3277,
+        "phrase_novelty": 0.75,
+        "unseen": [
+          "menu next",
+          "mess menu",
+          "next week"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "u002",
+        "answerable": false,
+        "confidence": 0.2725,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "bus route",
+          "campu reach",
+          "city centre",
+          "reach city",
+          "route campu"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "u003",
+        "answerable": false,
+        "confidence": 0.2805,
+        "phrase_novelty": 0.75,
+        "unseen": [
+          "cell right",
+          "head placement",
+          "right now"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "u004",
+        "answerable": false,
+        "confidence": 0.2177,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "campu wifi",
+          "wifi password"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "u005",
+        "answerable": false,
+        "confidence": 0.2994,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "gym timing",
+          "timing campu"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "u006",
+        "answerable": false,
+        "confidence": 0.2465,
+        "phrase_novelty": 0.6667,
+        "unseen": [
+          "national ranking",
+          "s national"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      }
+    ],
+    "v2": [
+      {
+        "id": "v2-001",
+        "answerable": true,
+        "confidence": 0.5475,
+        "phrase_novelty": 0.5,
+        "unseen": [
+          "admission seat",
+          "aggregate physic",
+          "mathematic admission",
+          "minimum aggregate"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v2-002",
+        "answerable": true,
+        "confidence": 0.5661,
+        "phrase_novelty": 0.625,
+        "unseen": [
+          "grade end",
+          "minimum paper",
+          "paper minimum",
+          "paper pass",
+          "percentage course"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v2-003",
+        "answerable": true,
+        "confidence": 0.4934,
+        "phrase_novelty": 0.6667,
+        "unseen": [
+          "daily overdue",
+          "fine total",
+          "overdue fine",
+          "total borrowing"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v2-004",
+        "answerable": true,
+        "confidence": 0.4236,
+        "phrase_novelty": 0.6,
+        "unseen": [
+          "certificate countersigned",
+          "day outside",
+          "outside medical"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v2-005",
+        "answerable": true,
+        "confidence": 0.4256,
+        "phrase_novelty": 0.8333,
+        "unseen": [
+          "class instructor",
+          "first penalty",
+          "penalty recording",
+          "recording class",
+          "s permission"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v2-006",
+        "answerable": true,
+        "confidence": 0.5115,
+        "phrase_novelty": 0.625,
+        "unseen": [
+          "arrear next",
+          "fee tuition",
+          "registration blocked",
+          "tuition arrear",
+          "weekly late"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v2-007",
+        "answerable": true,
+        "confidence": 0.597,
+        "phrase_novelty": 0.6667,
+        "unseen": [
+          "between end",
+          "exam sessional",
+          "grade split",
+          "split between",
+          "term exam",
+          "test assignment"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v2-008",
+        "answerable": true,
+        "confidence": 0.4065,
+        "phrase_novelty": 0.8333,
+        "unseen": [
+          "cgpa keep",
+          "drop below",
+          "keep stay",
+          "stay honour",
+          "track drop"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v2-009",
+        "answerable": true,
+        "confidence": 0.4928,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "credit credit",
+          "credit doe",
+          "doe carry",
+          "earn credit",
+          "internship earn",
+          "long internship"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "v2-010",
+        "answerable": true,
+        "confidence": 0.2975,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "hostel meet",
+          "parent visit",
+          "visit hostel"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v2-011",
+        "answerable": true,
+        "confidence": 0.5272,
+        "phrase_novelty": 0.8,
+        "unseen": [
+          "doe money",
+          "money go",
+          "scholarship semester",
+          "semester doe"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v2-012",
+        "answerable": true,
+        "confidence": 0.6221,
+        "phrase_novelty": 0.75,
+        "unseen": [
+          "cgpa campu",
+          "count dream",
+          "doe second",
+          "offer count",
+          "placement doe",
+          "second offer"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v2-u01",
+        "answerable": false,
+        "confidence": 0.4341,
+        "phrase_novelty": 0.75,
+        "unseen": [
+          "quota admission",
+          "reserved sport",
+          "sport quota"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v2-u02",
+        "answerable": false,
+        "confidence": 0.3342,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "annual sport",
+          "entry fee",
+          "fee annual",
+          "sport festival"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "v2-u03",
+        "answerable": false,
+        "confidence": 0.3025,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "course thi",
+          "data structure",
+          "professor teaching",
+          "structure course",
+          "teaching data",
+          "thi semester"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v2-u04",
+        "answerable": false,
+        "confidence": 0.2192,
+        "phrase_novelty": 0.75,
+        "unseen": [
+          "accreditation score",
+          "naac accreditation",
+          "s naac"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v2-u05",
+        "answerable": false,
+        "confidence": 0.4065,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "after graduating",
+          "apply duplicate",
+          "certificate after",
+          "degree certificate",
+          "duplicate degree"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v2-u06",
+        "answerable": false,
+        "confidence": 0.4078,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "cleaning request",
+          "deadline submitting",
+          "hostel room",
+          "room cleaning",
+          "submitting hostel"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      }
+    ],
+    "v3": [
+      {
+        "id": "v3-001",
+        "answerable": true,
+        "confidence": 0.3647,
+        "phrase_novelty": 0.875,
+        "unseen": [
+          "bed doe",
+          "campu sick",
+          "doe campu",
+          "have long",
+          "long student",
+          "room have",
+          "student stay"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-002",
+        "answerable": true,
+        "confidence": 0.4216,
+        "phrase_novelty": 0.8889,
+        "unseen": [
+          "already have",
+          "count dream",
+          "have one",
+          "higher next",
+          "next package",
+          "offer higher",
+          "one offer",
+          "package count"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-003",
+        "answerable": true,
+        "confidence": 0.5055,
+        "phrase_novelty": 0.7273,
+        "unseen": [
+          "allowed failed",
+          "attempt allowed",
+          "chance cost",
+          "course doe",
+          "doe special",
+          "special one",
+          "time chance",
+          "total number"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-004",
+        "answerable": true,
+        "confidence": 0.5278,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "course withdraw",
+          "during whole",
+          "whole programme",
+          "withdraw during"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "v3-005",
+        "answerable": true,
+        "confidence": 0.4875,
+        "phrase_novelty": 0.8571,
+        "unseen": [
+          "credit credit",
+          "credit doe",
+          "doe carry",
+          "earn academic",
+          "internship earn",
+          "shortest internship"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-006",
+        "answerable": true,
+        "confidence": 0.5808,
+        "phrase_novelty": 0.4444,
+        "unseen": [
+          "cgpa end",
+          "doe transfer",
+          "transfer effect",
+          "year apply"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-007",
+        "answerable": true,
+        "confidence": 0.4728,
+        "phrase_novelty": 0.4286,
+        "unseen": [
+          "credit fail",
+          "detail wrong",
+          "fail bank"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-008",
+        "answerable": true,
+        "confidence": 0.6021,
+        "phrase_novelty": 0.5714,
+        "unseen": [
+          "cgpa maintained",
+          "credit doe",
+          "doe honour",
+          "programme require"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-009",
+        "answerable": true,
+        "confidence": 0.5646,
+        "phrase_novelty": 0.5,
+        "unseen": [
+          "date point",
+          "fee pay",
+          "pay after",
+          "point next",
+          "registration blocked"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-010",
+        "answerable": true,
+        "confidence": 0.5666,
+        "phrase_novelty": 0.7143,
+        "unseen": [
+          "cycle fee",
+          "each paper",
+          "fee each",
+          "paper register",
+          "register one"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-011",
+        "answerable": true,
+        "confidence": 0.5444,
+        "phrase_novelty": 0.5,
+        "unseen": [
+          "dd passing",
+          "doe dd",
+          "grade carry",
+          "point doe"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-012",
+        "answerable": true,
+        "confidence": 0.4437,
+        "phrase_novelty": 0.8,
+        "unseen": [
+          "committee escalated",
+          "day grievance",
+          "grievance resolved",
+          "resolved committee"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-013",
+        "answerable": false,
+        "confidence": 0.2136,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "fi password",
+          "hostel network",
+          "password hostel",
+          "wi fi"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v3-014",
+        "answerable": false,
+        "confidence": 0.3404,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "apply campu",
+          "campu parking",
+          "car doe",
+          "doe cost",
+          "parking permit",
+          "permit car"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "v3-015",
+        "answerable": false,
+        "confidence": 0.2903,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "gym timing",
+          "membership fee",
+          "timing membership"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v3-016",
+        "answerable": false,
+        "confidence": 0.3048,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "canteen cost",
+          "doe meal",
+          "meal canteen"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v3-017",
+        "answerable": false,
+        "confidence": 0.313,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "duplicate identity",
+          "fee duplicate",
+          "identity card"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v3-018",
+        "answerable": false,
+        "confidence": 0.4965,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "attendance doe",
+          "doe require",
+          "scholarship attendance",
+          "sport scholarship"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      }
+    ],
+    "v4": [
+      {
+        "id": "v4-001",
+        "answerable": true,
+        "confidence": 0.4952,
+        "phrase_novelty": 0.7143,
+        "unseen": [
+          "admission counselling",
+          "aggregate physic",
+          "eligible admission",
+          "mathematic eligible",
+          "minimum aggregate"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-002",
+        "answerable": true,
+        "confidence": 0.6042,
+        "phrase_novelty": 0.3333,
+        "unseen": [
+          "fee adjusted",
+          "tuition later"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-003",
+        "answerable": true,
+        "confidence": 0.5232,
+        "phrase_novelty": 0.8,
+        "unseen": [
+          "curfew time",
+          "hostel curfew",
+          "permission late",
+          "time permission"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-004",
+        "answerable": true,
+        "confidence": 0.3893,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "day time",
+          "parent visit",
+          "time parent",
+          "visit hostel"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "v4-005",
+        "answerable": true,
+        "confidence": 0.5897,
+        "phrase_novelty": 0.6,
+        "unseen": [
+          "day borrowing",
+          "fine day",
+          "library fine"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-006",
+        "answerable": true,
+        "confidence": 0.3712,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "book borrow",
+          "borrow once",
+          "long keep",
+          "once long"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "v4-007",
+        "answerable": true,
+        "confidence": 0.5032,
+        "phrase_novelty": 0.6667,
+        "unseen": [
+          "dispensary timing",
+          "timing doctor"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-008",
+        "answerable": true,
+        "confidence": 0.4142,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "counsellor sit",
+          "day doe",
+          "doe counsellor",
+          "sit timing"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "v4-009",
+        "answerable": true,
+        "confidence": 0.489,
+        "phrase_novelty": 0.8333,
+        "unseen": [
+          "committee impose",
+          "damaging property",
+          "fine discipline",
+          "impose damaging",
+          "maximum fine"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-010",
+        "answerable": true,
+        "confidence": 0.435,
+        "phrase_novelty": 0.75,
+        "unseen": [
+          "day have",
+          "fee day",
+          "have apply"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-011",
+        "answerable": true,
+        "confidence": 0.504,
+        "phrase_novelty": 0.5,
+        "unseen": [
+          "instalment due",
+          "tuition two"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-012",
+        "answerable": true,
+        "confidence": 0.5968,
+        "phrase_novelty": 0.625,
+        "unseen": [
+          "eligible based",
+          "income student",
+          "percentage tuition",
+          "scholarship percentage",
+          "tuition waived"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-013",
+        "answerable": false,
+        "confidence": 0.4202,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "charge doe",
+          "doe carry",
+          "extra charge",
+          "hostel room",
+          "occupancy hostel",
+          "room extra",
+          "single occupancy",
+          "switch single"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "v4-014",
+        "answerable": false,
+        "confidence": 0.3958,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "after graduation",
+          "certificate after",
+          "degree certificate",
+          "duplicate degree",
+          "fee duplicate"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v4-015",
+        "answerable": false,
+        "confidence": 0.3745,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "alumni association",
+          "association membership",
+          "date pay",
+          "last date",
+          "membership fee",
+          "pay alumni"
+        ],
+        "refused_before": false,
+        "refused_after": true
+      },
+      {
+        "id": "v4-016",
+        "answerable": false,
+        "confidence": 0.1631,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "bus main",
+          "doe run",
+          "gate railway",
+          "main gate",
+          "often doe",
+          "railway station",
+          "shuttle bus",
+          "station often"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v4-017",
+        "answerable": false,
+        "confidence": 0.2549,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "assistant library",
+          "hour week",
+          "hourly wage",
+          "library hourly",
+          "student assistant",
+          "week work",
+          "work student"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v4-018",
+        "answerable": false,
+        "confidence": 0.2246,
+        "phrase_novelty": 1.0,
+        "unseen": [
+          "affair office",
+          "current dean",
+          "dean student",
+          "student affair"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      }
+    ]
+  }
+}

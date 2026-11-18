@@ -103,3 +103,23 @@ What v3 changed on its first read: refusal accuracy **0.5000** at the shipped th
 v2 0.1667), with answerable and unanswerable confidences still overlapping (0.322 vs 0.497). The
 failure replicates. That is the baseline M14 has to beat, and it was measured before any fix was
 designed.
+
+## v4, appended (M17) — because v3 has now been read twice
+
+`golden_set_v4.jsonl` appends 12 new answerable questions (`v4-0NN`) and 6 unanswerable ones
+(ids 013-018). v3 decided M14's second signal, so judging a *different* signal on v3 would be a
+second look at the same six questions. v4 was written from the corpus after M16's release, before
+any phrase-level measurement existed, and its unanswerable questions span both kinds: plainly
+absent topics (alumni, shuttle bus, duplicate degree) and near-misses whose words the corpus uses
+(a student job in the library, the dean's office, a single-occupancy room).
+
+The rule is unchanged and now applies to v4:
+
+- **Fit on v1, decide on v4.** v1 is still the only set anything is tuned on.
+- **v4 is read once per decision.** It is now spent for the phrase experiment; the next refusal
+  claim needs a v5.
+
+What v4 changed: the phrase-level signal refused every unanswerable question at the fitted floor
+and refused half of v1's answerable ones with it, so it was **not adopted** (`results/phrase.md`).
+The set is kept because it is the instrument that refused an appealing-looking signal, and it is
+frozen from here.

@@ -7,7 +7,7 @@ VENV_PY ?= $(PY)
 # on a Windows checkout the venv interpreter is .venv/Scripts/python.exe;
 # on Unix .venv/bin/python - set VENV_PY accordingly when using venv targets.
 
-.PHONY: corpus limits test eval embed ablation holdout support answer-selection fusion safety bench soak soak-interactive dashboard trace gate-demo check ci setup ingest serve handover
+.PHONY: corpus limits test eval embed ablation holdout support answer-selection fusion phrase safety bench soak soak-interactive dashboard trace gate-demo check ci setup ingest serve handover
 
 corpus:
 	$(PY) scripts/check_corpus.py
@@ -44,6 +44,10 @@ answer-selection:
 # M16: fusion depth, and the counterfactual that shows what meeting FR-11 literally requires
 fusion:
 	$(PY) -m eval.fusion
+
+# M17: phrase-level novelty, judged on the appended v4 set
+phrase:
+	$(PY) -m eval.phrase
 
 # stage-2 layer 2 (M9): injection suite, tenant probes, log audit, degraded mode
 safety:
