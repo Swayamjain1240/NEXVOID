@@ -5,19 +5,21 @@ appended 12+6 set written after the code was frozen, with its own ids. Nothing i
 was edited, and no v2 question was used to choose a weight, a threshold or a ranker.
 v3 is the second appended set (12+6, M13), written after the v2 refusal failure was
 already known and scored here for the first time. **Decisions below are read off v3.**
+v4 is the set written for the M17 novelty question (12+6); it is scored here too, but
+it was not written for retrieval, so its recall column is a check, not a target.
 
-## Retrieval, all three sets, same configurations
+## Retrieval, all four sets, same configurations
 
-| configuration | v1 recall@10 (95% CI) | v2 recall@10 | v3 recall@10 | v3 p@5 capped | v3 MRR |
-|---|---|---|---|---|---|
-| sparse | 0.9583 [0.798, 0.993] | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
-| dense | 1.0000 [0.862, 1.000] | 1.0000 | 1.0000 | 1.0000 | 0.9583 |
-| hybrid (fusion only) | 0.9583 [0.798, 0.993] | 1.0000 | 1.0000 | 1.0000 | 0.9583 |
-| hybrid + blend | 0.9167 [0.742, 0.977] | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
-| hybrid + learned | 0.9583 [0.798, 0.993] | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| configuration | v1 recall@10 (95% CI) | v2 recall@10 | v3 recall@10 | v4 recall@10 | v3 p@5 capped | v3 MRR |
+|---|---|---|---|---|---|---|
+| sparse | 0.9583 [0.798, 0.993] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| dense | 1.0000 [0.862, 1.000] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.9583 |
+| hybrid (fusion only) | 0.9583 [0.798, 0.993] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.9583 |
+| hybrid + blend | 0.9167 [0.742, 0.977] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| hybrid + learned | 0.9583 [0.798, 0.993] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
 
 5 of five configurations reach 1.0000 on
-v2, 5 of five on v3, so both appended
+v2, 5 of five on v3 and 5 of five on v4, so all three appended
 sets
 are saturated: they say only that no configuration misses a relevant document on
 questions like these, which are short, factual and single-document - exactly the traffic
@@ -31,6 +33,7 @@ that is where both earn their place.
 | v1 | 0.31 | 0.9583 | 0.8333 | 24 | 6 |
 | v2 | 0.31 | 0.9167 | 0.3333 | 12 | 6 |
 | v3 | 0.31 | 1.0000 | 0.5000 | 12 | 6 |
+| v4 | 0.31 | 1.0000 | 0.5000 | 12 | 6 |
 
 ## Why it fails: the classes overlap on the only feature the gate uses
 
@@ -42,6 +45,8 @@ that is where both earn their place.
 | v2 | unanswerable | 0.219 | 0.434 | 0.351 |
 | v3 | answerable | 0.365 | 0.602 | 0.507 |
 | v3 | unanswerable | 0.214 | 0.497 | 0.326 |
+| v4 | answerable | 0.371 | 0.604 | 0.493 |
+| v4 | unanswerable | 0.163 | 0.420 | 0.306 |
 
 On v1 the six unanswerable questions all sit below the six weakest answerable ones,
 which is why theta had a clean gap to land in. On v2 they do not: the lowest
@@ -104,6 +109,14 @@ the v1 figure was in-sample and the gate is the open requirement, not a rounding
 - hybrid + learned: none
 
 **v3**
+
+- sparse: none
+- dense: none
+- hybrid (fusion only): none
+- hybrid + blend: none
+- hybrid + learned: none
+
+**v4**
 
 - sparse: none
 - dense: none

@@ -57,7 +57,8 @@ from eval.run_eval import (  # noqa: E402
 
 V2_PATH = ROOT / "eval" / "golden_set_v2.jsonl"
 V3_PATH = ROOT / "eval" / "golden_set_v3.jsonl"
-SET_LABELS = ("v1", "v2", "v3")
+V4_PATH = ROOT / "eval" / "golden_set_v4.jsonl"
+SET_LABELS = ("v1", "v2", "v3", "v4")
 ENCODER = "potion-base-8M"  # the shipped encoder; the hashed stand-in is in results/ablation.md
 
 CONFIGS = (
@@ -97,6 +98,10 @@ def load_v2() -> tuple[list[dict], list[dict]]:
 
 def load_v3() -> tuple[list[dict], list[dict]]:
     return load_set(V3_PATH, "v3")
+
+
+def load_v4() -> tuple[list[dict], list[dict]]:
+    return load_set(V4_PATH, "v4")
 
 
 def measure(store, mode: str, overrides: dict, questions: list[dict]) -> dict:
@@ -168,10 +173,12 @@ def main() -> int:
     v1_answerable, v1_unanswerable = load_questions()
     v2_answerable, v2_unanswerable = load_v2()
     v3_answerable, v3_unanswerable = load_v3()
+    v4_answerable, v4_unanswerable = load_v4()
     sets = {
         "v1": (v1_answerable, v1_unanswerable),
         "v2": (v2_answerable, v2_unanswerable),
         "v3": (v3_answerable, v3_unanswerable),
+        "v4": (v4_answerable, v4_unanswerable),
     }
     store = build_store(SETTINGS.default_tenant)
     try:
@@ -299,26 +306,31 @@ def main() -> int:
         "was edited, and no v2 question was used to choose a weight, a threshold or a ranker.",
         "v3 is the second appended set (12+6, M13), written after the v2 refusal failure was",
         "already known and scored here for the first time. **Decisions below are read off v3.**",
+        "v4 is the set written for the M17 novelty question (12+6); it is scored here too, but",
+        "it was not written for retrieval, so its recall column is a check, not a target.",
         "",
-        "## Retrieval, all three sets, same configurations",
+        "## Retrieval, all four sets, same configurations",
         "",
         "| configuration | v1 recall@10 (95% CI) | v2 recall@10 | v3 recall@10 "
-        "| v3 p@5 capped | v3 MRR |",
-        "|---|---|---|---|---|---|",
+        "| v4 recall@10 | v3 p@5 capped | v3 MRR |",
+        "|---|---|---|---|---|---|---|",
     ]
     for name, block in results.items():
         one, two, three = block["v1"]["recall"], block["v2"]["recall"], block["v3"]["recall"]
+        four = block["v4"]["recall"]
         lines.append(
             f"| {name} | {one['mean']:.4f} [{one['ci_low']:.3f}, {one['ci_high']:.3f}] "
-            f"| {two['mean']:.4f} | {three['mean']:.4f} "
+            f"| {two['mean']:.4f} | {three['mean']:.4f} | {four['mean']:.4f} "
             f"| {block['v3']['precision5c']['mean']:.4f} | {block['v3']['mrr']['mean']:.4f} |"
         )
     v2_reaches = [block["v2"]["recall"]["mean"] for block in results.values()]
     v3_reaches = [block["v3"]["recall"]["mean"] for block in results.values()]
+    v4_reaches = [block["v4"]["recall"]["mean"] for block in results.values()]
     lines += [
         "",
         f"{sum(1 for value in v2_reaches if value == 1.0)} of five configurations reach 1.0000 on",
-        f"v2, {sum(1 for value in v3_reaches if value == 1.0)} of five on v3, so both appended",
+        f"v2, {sum(1 for value in v3_reaches if value == 1.0)} of five on v3 and "
+        f"{sum(1 for value in v4_reaches if value == 1.0)} of five on v4, so all three appended",
         "sets",
         "are saturated: they say only that no configuration misses a relevant document on",
         "questions like these, which are short, factual and single-document - exactly the traffic",
@@ -440,7 +452,7 @@ def main() -> int:
         "## Misses, by set and configuration",
         "",
     ]
-    for label in ("v2", "v3"):
+    for label in ("v2", "v3", "v4"):
         lines.append(f"**{label}**")
         lines.append("")
         for name, block in results.items():

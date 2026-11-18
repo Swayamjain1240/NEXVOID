@@ -220,7 +220,7 @@ src/atlas/
 ├── api.py · handler.py · metrics.py payload shapes · HTTP handler · request counters (M18)
 ├── server.py                        socket, state and serve loop; stdlib only (M5)
 └── cli.py                           ingest · ask · stats · serve
-tests/                                unit, contract and integration (pytest)
+tests/                                unit · contract · architecture · traceability (pytest)
 web/demo.html                         the one-page demo served at /
 bench/load_test.py                    NFR-01 concurrent load test
 eval/embeddings.py                    stage-2 encoder delta harness (M7)
@@ -300,6 +300,8 @@ Every claim in this README comes from a target that rewrites a file in `results/
 | `make answer-selection` | `results/answer_selection.md` | topic-list answers 8 → 0 on three sets; top-1 passage from the right document 20/24 · 12/12 · 11/12 |
 | `make fusion` | `results/fusion.md` | fusion at operating depth: offline hybrid 0.88 → 0.92 (NFR-04 met); the counterfactual that shows why FR-11's strict form is unmeetable |
 | `make phrase` | `results/phrase.md` | phrase-level novelty on the appended v4 set: refuses every unanswerable question and 3 of 12 answerable ones → not adopted |
+| `pytest tests/test_architecture.py` | layer rules from SwDD §1, checked on the real import graph (NFR-12); the test was mutated to confirm it fires |
+| `pytest tests/test_traceability.py` | every FR/NFR id resolves to a test, report, ADR or a row in `results/EVIDENCE.md` (NFR-13) |
 | `make api-contract` | `results/api_contract.md` | 12 probes against a live server: every documented route and four documented failures, all PASS |
 | `python -m eval.rerank_train` | `results/rerank.md` | trained reranker 0.90 held-out vs dense 1.00 → not adopted |
 | `make safety` | `results/safety.md` | 40/40 attacks refused, 0 tenant leaks, 0 PII in logs, 3/3 degraded |

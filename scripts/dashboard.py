@@ -211,7 +211,7 @@ def holdout_panel() -> str:
     gate = report.get("confidence", {}).get("shipped", {})
     decision = report.get("decision", {})
     rows = []
-    for label in ("v1", "v2", "v3"):
+    for label in ("v1", "v2", "v3", "v4"):
         recall = shipped.get(label, {}).get("recall", {})
         rows.append([
             f"{label} (n={sets.get(label, {}).get('answerable', 0)}+"
@@ -261,6 +261,42 @@ def support_panel() -> str:
     )
 
 
+def fusion_panel() -> str:
+    """FR-11 at the operating depth: what fusion buys for each encoder (M16)."""
+    report = load("fusion.json")
+    if not report:
+        return panel("Fusion depth", "fusion.json", "<p class='missing'>not run</p>")
+    rows = []
+    for encoder, modes in report.get("encoders", {}).items():
+        for mode, sets in modes.items():
+            cells = [f"{sets.get(label, {}).get('recall', 0):.3f}" for label in ("v1", "v2", "v3")]
+            rows.append([encoder.split(" (")[0], mode, *cells])
+    return panel(
+        "Fusion depth and order (FR-11, M16)", "fusion.json",
+        table(["encoder", "retriever", "v1", "v2", "v3"], rows),
+        f"k={report.get('k')}; recall on answerable questions. The shipped order is fusion at "
+        "depth 10 - the blend and learned orders are measured here and not adopted.",
+    )
+
+
+def phrase_panel() -> str:
+    """The fourth refusal signal: refused on a fresh set, and what it cost (M17)."""
+    report = load("phrase.json")
+    if not report:
+        return panel("Phrase novelty", "phrase.json", "<p class='missing'>not run</p>")
+    rows = [
+        [label, f"{row.get('refusal_accuracy', 0):.3f}", f"{row.get('answer_rate', 0):.3f}"]
+        for label, row in report.get("baseline", {}).items()
+    ]
+    adopted = report.get("adopted")
+    return panel(
+        "Phrase-level novelty (M17, FR-17)", "phrase.json",
+        table(["set", "refusal", "answer rate"], rows),
+        f"fitted floor {report.get('fitted_floor')} over {report.get('corpus_phrases')} corpus "
+        f"phrases; {'adopted' if adopted else 'not adopted - FR-17 stays open'}.",
+    )
+
+
 def handover_panel() -> str:
     report = load("handover.json")
     steps = report.get("steps", [])
@@ -288,6 +324,8 @@ def main() -> int:
         soak_panel(),
         holdout_panel(),
         support_panel(),
+        fusion_panel(),
+        phrase_panel(),
     ]
     html = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
