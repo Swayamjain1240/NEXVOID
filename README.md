@@ -1,6 +1,48 @@
 # Atlas — a multi-tenant knowledge assistant that refuses to guess
 
-**Status: complete at tag `v1.0` (M0–M16).** Every requirement with a measurable criterion is met
+**Status: complete at tag `v1.4` (M0–M20).** This page leads with what the repository has
+*measured*, then with what it has not. The full register of known gaps is
+[`docs/17-limitations.md`](docs/17-limitations.md); the release note is
+[`docs/releases/v1.4.0.md`](docs/releases/v1.4.0.md).
+
+## What is proven
+
+Every row is a number from a committed report, produced by the command beside it. Nothing here is
+an intention.
+
+| claim | measured | report | regenerate |
+|---|---|---|---|
+| Answers are extractive, so no unsupported sentence can exist | every sentence returned is a span of a retrieved chunk; citations are passage ids | `results/eval_report.md` | `make eval` |
+| Retrieval finds the labelled document | recall@10 **0.9583** fusion (trained encoder) on the frozen 24; **0.9167** hybrid with the offline default | `results/holdout.md`, `results/eval_report.md` | `make holdout` · `make eval` |
+| The API does what its docstring says | **12/12** probes, four of them documented failures | `results/api_contract.md` | `make api-contract` |
+| Two identical runs produce the identical report | 2 runs, **0 differences**, byte-exact | `results/determinism.md` | `make determinism` |
+| Injection, tenancy and logs hold | **40/40** attacks refused · **0** cross-tenant leaks in 12 probes · **0** raw personal values in 133 log lines · 0 false positives on 30 benign questions | `results/safety.md` | `make safety` |
+| A failing provider degrades rather than fails | **3/3** answers with `degraded=true`, breaker opens and recovers | `results/safety.md` | `make safety` |
+| Latency at the stated operating point | p95 **37.2 ms** at 10 users (burst) and **19.56 ms** over 15 minutes with human think time, 0 failures | `results/bench.md`, `results/soak-interactive.md` | `make bench` · `make soak-interactive` |
+| A clean clone reproduces the numbers | recall 0.9167 = 0.9167, refusal 1.0000 = 1.0000, **PASS** | `results/handover.md` | `make handover` |
+| Structure and traceability are enforced, not promised | 149 tests plus import-graph and requirement-coverage checks | `tests/test_architecture.py`, `tests/test_traceability.py` | `make test` |
+
+## What is not
+
+- **FR-17 is open.** The refusal gate does not generalise: accuracy 1.0000 on v1, **0.1667** on v2,
+  **0.5000** on v3, 0.6667 with the vocabulary signal. Phrase-level novelty refuses every
+  unanswerable question *and three of twelve answerable ones*, so it was not adopted
+  (`results/phrase.md`, [ADR-0011](docs/adr/0011-phrase-novelty-not-adopted.md)).
+- **FR-11 is met only in its amended one-question form.** The strict form is provably equivalent to
+  copying the stronger retriever (`results/fusion.md`, [ADR-0010](docs/adr/0010-fusion-depth-and-fr11.md)).
+- **NFR-01 fails at saturation.** A 30-minute soak at 10 unpaced users holds p95 **58.40 ms** against
+  a 50 ms target; the same ten users paced like people hold 19.56 ms.
+- **Stage 2 is not built.** No generative model, so NFR-02 and NFR-06 cannot be measured at all and
+  are named as exempt in the traceability test rather than quietly omitted.
+- **There is no write API.** Ingest is a CLI operation on purpose
+  ([ADR-0012](docs/adr/0012-read-mostly-api.md)): no roles, quotas, rate limits or backups exist
+  behind it.
+- **The evidence is small.** 18 documents, 34 chunks, one tenant's worth of content, four question
+  sets that mostly saturate at 1.0000, and every number from one Windows machine over loopback.
+
+## How it got here
+
+**The milestone record, in order.** Every requirement with a measurable criterion is met
 or carries a recorded amendment with its evidence, and two are named rather than claimed: the
 refusal gate does not generalise (FR-17, two independent holdouts, partially recovered by M14's
 second signal), and FR-11 is met only in its amended one-question form, with the proof that the
@@ -302,6 +344,7 @@ Every claim in this README comes from a target that rewrites a file in `results/
 | `make phrase` | `results/phrase.md` | phrase-level novelty on the appended v4 set: refuses every unanswerable question and 3 of 12 answerable ones → not adopted |
 | `pytest tests/test_architecture.py` | layer rules from SwDD §1, checked on the real import graph (NFR-12); the test was mutated to confirm it fires |
 | `pytest tests/test_traceability.py` | every FR/NFR id resolves to a test, report, ADR or a row in `results/EVIDENCE.md` (NFR-13) |
+| `make determinism` | `results/determinism.md` | the eval command run twice: identical payloads, **0 differences** (NFR-15) |
 | `make api-contract` | `results/api_contract.md` | 12 probes against a live server: every documented route and four documented failures, all PASS |
 | `python -m eval.rerank_train` | `results/rerank.md` | trained reranker 0.90 held-out vs dense 1.00 → not adopted |
 | `make safety` | `results/safety.md` | 40/40 attacks refused, 0 tenant leaks, 0 PII in logs, 3/3 degraded |
@@ -367,8 +410,10 @@ Every claim in this README comes from a target that rewrites a file in `results/
 | 13 | [Handover Runbook](docs/13-handover-runbook.md) | how to run it, prove it, and extend it |
 | 14 | [Request Trace](docs/14-request-trace.md) | the life of one request, stage by stage |
 | 15 | [Demo Script](docs/15-demo-script.md) | the five-minute walkthrough: one answered, one refused, one injected, one degraded |
-| 16 | [Completion Plan](docs/16-completion-plan.md) | what is left between `v1.1` and "done", with exit criteria and the definition of done |
-| — | [Decision records](docs/adr/) | eleven decisions, each with the alternative it rejected and the report behind it |
+| 16 | [Completion Plan](docs/16-completion-plan.md) | what was left between `v1.1` and "done", with exit criteria and the definition of done |
+| 17 | [Limitations Register](docs/17-limitations.md) | what is not met, not built, or too small to generalise, each with its evidence |
+| — | [Release note `v1.4.0`](docs/releases/v1.4.0.md) | what this tag added, changed, and verified |
+| — | [Decision records](docs/adr/) | twelve decisions, each with the alternative it rejected and the report behind it |
 
 ## Status
 

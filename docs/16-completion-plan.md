@@ -1,6 +1,6 @@
 # Atlas — completion plan (v1.1 → done)
 
-**Document ID:** ATL-PLAN-002 · **Status:** active — M19 complete at `v1.3`, M20 next · **Applies from:** tag `v1.1`
+**Document ID:** ATL-PLAN-002 · **Status:** finished — M20 complete at `v1.4`; the definition of done below is met, with two named gaps (FR-17, amended FR-11) in `docs/17-limitations.md` · **Applies from:** tag `v1.1`
 **Related:** [SRS](07-software-requirements.md) · [Runbook](13-handover-runbook.md) · [ADR register](adr/)
 
 This plan closes the project. "Complete" here means something specific and checkable, not "I ran out
