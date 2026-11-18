@@ -81,7 +81,7 @@ and a measurement harness. Excludes model training, multi-modal input, and conta
 
 | ID | Requirement | Acceptance criterion |
 |---|---|---|
-| FR-20 | Expose `POST /v1/ask`, `POST /v1/documents`, `GET /health`, `GET /metrics` | endpoints respond with documented schemas |
+| FR-20 | Expose `GET /v1/ask`, `POST /v1/ask`, `GET /v1/healthz`, `GET /health`, `GET /v1/metrics` | every documented route answers with the documented schema, including its documented failures (`results/api_contract.md`). **Amended M18 (ADR-0012):** `POST /v1/documents` is not offered; ingest is a CLI operation with idempotent checksums. |
 | FR-21 | Every response must carry `trace_id` and per-stage `timings_ms` | fields present and non-empty on 100% of responses |
 | FR-22 | A human-usable page must exist | loading `/` shows an input, an answer area and citations; usable without docs |
 | FR-23 | Errors must be structured | non-2xx responses contain `code` and `message`, never a stack trace |

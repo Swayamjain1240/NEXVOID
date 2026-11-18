@@ -169,7 +169,7 @@ model 1/
 │   ├── generate.py               [MVP] extractive generator (grounded by construction)
 │   ├── pipeline.py               [MVP] guard → retrieve → gate → generate → respond
 │   ├── metrics.py                [MVP] Prometheus counters/histograms
-│   ├── api.py                    [MVP] /v1/ask · /v1/documents · /health · /metrics · /
+│   ├── api.py                    [MVP] /v1/ask (GET+POST) · /health · /v1/metrics · /  (M18; ingest CLI-only)
 │   ├── cli.py                    [MVP] ingest · ask · eval · serve · stats
 │   ├── web/index.html            [MVP] one page: ask box, answer, citations, timings
 │   ├── rerank.py                 [S2]  trained cross-encoder reranker

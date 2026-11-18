@@ -51,6 +51,7 @@ repository is not reproducible, this receipt is the answer.
 | answer selection: topic-list answers 8 → 0, top-1 from the right document 20/24 · 12/12 · 11/12 | `results/answer_selection.md` |
 | fusion depth: offline hybrid 0.88 → 0.92 (NFR-04 met), and the FR-11 counterfactual | `results/fusion.md` |
 | phrase-level novelty on a fresh v4 set: refused, it also refuses answerable questions | `results/phrase.md` |
+| HTTP contract: 12 probes, live server, four documented failures, all PASS | `results/api_contract.md` |
 
 ## 3. Known limitations (state them, do not hide them)
 

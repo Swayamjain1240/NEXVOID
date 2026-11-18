@@ -7,8 +7,10 @@ second signal), and FR-11 is met only in its amended one-question form, with the
 strict form means copying the stronger retriever (`results/fusion.md`). M1–M6 built the measured MVP: corpus, hand-labeled
 question set, index layer (ingest, chunking, store, hybrid retrieval), the first **measured
 baseline** on the frozen set (recall@10: sparse 0.96 · hybrid 0.88 · dense 0.75), the **answer
-path** (extractive cited answers, safety-first refusal gate), the **HTTP API** (`GET /v1/ask`,
-token auth, machine-readable errors, four stage timings, one-page demo at `/`, NFR-01 load test
+path** (extractive cited answers, safety-first refusal gate), the **HTTP API** (`GET` and `POST
+/v1/ask`, `/v1/healthz` + `/health`, `/v1/metrics`, token auth, machine-readable errors, four stage
+timings, one-page demo at `/`, and a contract report that probes all twelve behaviours —
+`results/api_contract.md` — NFR-01 load test
 **PASS** p95 = 37.2 ms at 10 users), and the **handover proof** (clean-clone reproduction,
 `results/handover.md`).
 
@@ -215,7 +217,8 @@ src/atlas/
 ├── support.py                       second refusal signal: vocabulary novelty (M14)
 ├── select.py                        sentence selection + heading-echo guard (M15)
 ├── phrase.py                        phrase-novelty signal, measured and not shipped (M17)
-├── server.py                        /v1/ask JSON API, stdlib only (M5)
+├── api.py · handler.py · metrics.py payload shapes · HTTP handler · request counters (M18)
+├── server.py                        socket, state and serve loop; stdlib only (M5)
 └── cli.py                           ingest · ask · stats · serve
 tests/                                unit, contract and integration (pytest)
 web/demo.html                         the one-page demo served at /
@@ -297,6 +300,7 @@ Every claim in this README comes from a target that rewrites a file in `results/
 | `make answer-selection` | `results/answer_selection.md` | topic-list answers 8 → 0 on three sets; top-1 passage from the right document 20/24 · 12/12 · 11/12 |
 | `make fusion` | `results/fusion.md` | fusion at operating depth: offline hybrid 0.88 → 0.92 (NFR-04 met); the counterfactual that shows why FR-11's strict form is unmeetable |
 | `make phrase` | `results/phrase.md` | phrase-level novelty on the appended v4 set: refuses every unanswerable question and 3 of 12 answerable ones → not adopted |
+| `make api-contract` | `results/api_contract.md` | 12 probes against a live server: every documented route and four documented failures, all PASS |
 | `python -m eval.rerank_train` | `results/rerank.md` | trained reranker 0.90 held-out vs dense 1.00 → not adopted |
 | `make safety` | `results/safety.md` | 40/40 attacks refused, 0 tenant leaks, 0 PII in logs, 3/3 degraded |
 | `make bench` | `results/bench.md` | NFR-01 burst PASS: p95 43.25 ms at 10 users, 359 rps at 50 |

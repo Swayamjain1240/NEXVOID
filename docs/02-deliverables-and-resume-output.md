@@ -51,7 +51,8 @@ atlas/
 │   ├── store/                     ← sqlite or pg adapter; tenant filter is a required argument
 │   ├── cache/                     ← exact + semantic (cosine ≥ θ), tenant-namespaced, TTL-busted
 │   ├── obs/                       ← spans, metrics registry, structured logging, redaction
-│   └── api.py                     ← /v1/ask, /v1/ask/stream, /v1/documents, /v1/traces, /metrics
+│   └── api.py                     ← /v1/ask (GET+POST), /v1/healthz, /health, /v1/metrics
+│                                    (as built: M18, ADR-0012; ingest is CLI-only)
 ├── eval/
 │   ├── golden_set.jsonl           ← ~150 labeled queries (answerable + unanswerable)
 │   ├── attacks.jsonl              ← ~40 injection / exfiltration / role-play probes

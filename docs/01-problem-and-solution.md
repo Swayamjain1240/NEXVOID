@@ -249,13 +249,13 @@ Invariants:
 
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/v1/ask` | Non-streaming answer: answer, citations, confidence, trace_id, cost |
-| `POST` | `/v1/ask/stream` | SSE token stream with a terminal citations/verdict event |
-| `POST` | `/v1/documents` | Ingest (upload or URL), idempotent by checksum |
-| `DELETE` | `/v1/documents/{doc_id}` | Soft-delete + index invalidation |
+| `POST` | `/v1/ask` | Non-streaming answer: answer, citations, confidence, trace_id, cost — **built (M18)** |
+| `POST` | `/v1/ask/stream` | SSE token stream with a terminal citations/verdict event — *not built: the MVP is extractive, so there is nothing to stream* |
+| `POST` | `/v1/documents` | Ingest (upload or URL), idempotent by checksum — *not built: CLI-only, ADR-0012* |
+| `DELETE` | `/v1/documents/{doc_id}` | Soft-delete + index invalidation — *not built (ADR-0012)* |
 | `POST` | `/v1/feedback` | Thumbs + optional correction, feeds the eval set |
 | `GET` | `/v1/traces/{trace_id}` | Per-stage timings for one request |
-| `GET` | `/health`, `/ready`, `/metrics` | Liveness, readiness, Prometheus |
+| `GET` | `/v1/healthz`, `/health`, `/v1/metrics` | Liveness, alias, per-process counters and latency (JSON, not Prometheus) |
 
 ### 2.7 Evaluation methodology
 
