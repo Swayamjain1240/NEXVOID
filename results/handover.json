@@ -1,6 +1,6 @@
 {
   "provenance": {
-    "commit": "71525f97010235563dfb95562d9be387deb2bfb2",
+    "commit": "6465815f4acdb17f3d0d23517554ce28841769f4",
     "generator": "scripts/repro_clone.py (M6)"
   },
   "verdict": "PASS",
@@ -10,50 +10,50 @@
       "cwd": "model 1",
       "command": "git archive --format=tar --output C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-archive.tar HEAD",
       "exit": 0,
-      "seconds": 0.59,
+      "seconds": 1.99,
       "stdout_tail": [],
       "stderr_tail": []
     },
     {
       "step": "unpack into clean-clone/",
-      "cwd": "atlas-handover-cl-qfahsr_i",
+      "cwd": "atlas-handover-cl-al0qq9_i",
       "command": "tar -xf C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-archive.tar -C clean-clone",
       "exit": 0,
-      "seconds": 0.17,
+      "seconds": 0.2,
       "stdout_tail": [],
       "stderr_tail": []
     },
     {
       "step": "setup: fresh virtualenv from the host interpreter",
-      "cwd": "atlas-handover-cl-qfahsr_i",
-      "command": ".\\.venv\\Scripts\\python.exe -m venv C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-livnpz3r",
+      "cwd": "atlas-handover-cl-al0qq9_i",
+      "command": ".\\.venv\\Scripts\\python.exe -m venv C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-0tool8x8",
       "exit": 0,
-      "seconds": 11.77,
+      "seconds": 14.28,
       "stdout_tail": [],
       "stderr_tail": [
         "Actual environment location may have moved due to redirects, links or junctions.",
-        "  Requested location: \"C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-livnpz3r\\Scripts\\python.exe\"",
-        "  Actual location:    \"C:\\Users\\Swayam Jain\\AppData\\Local\\Temp\\atlas-handover-env-livnpz3r\\Scripts\\python.exe\""
+        "  Requested location: \"C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-0tool8x8\\Scripts\\python.exe\"",
+        "  Actual location:    \"C:\\Users\\Swayam Jain\\AppData\\Local\\Temp\\atlas-handover-env-0tool8x8\\Scripts\\python.exe\""
       ]
     },
     {
       "step": "setup: pip install -e . (numpy only, per NFR-20 budget)",
-      "cwd": "atlas-handover-cl-qfahsr_i",
-      "command": "C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-livnpz3r\\Scripts\\python.exe -m pip install -e C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-cl-qfahsr_i\\clean-clone --quiet",
+      "cwd": "atlas-handover-cl-al0qq9_i",
+      "command": "C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-0tool8x8\\Scripts\\python.exe -m pip install -e C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-cl-al0qq9_i\\clean-clone --quiet",
       "exit": 0,
-      "seconds": 24.2,
+      "seconds": 29.6,
       "stdout_tail": [],
       "stderr_tail": [
         "[notice] A new release of pip is available: 25.0.1 -> 26.3",
-        "[notice] To update, run: C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-livnpz3r\\Scripts\\python.exe -m pip install --upgrade pip"
+        "[notice] To update, run: C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-0tool8x8\\Scripts\\python.exe -m pip install --upgrade pip"
       ]
     },
     {
       "step": "ingest: 18 policy documents",
       "cwd": "clean-clone",
-      "command": "C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-livnpz3r\\Scripts\\python.exe -m atlas.cli --db data/atlas.db ingest corpus/campus",
+      "command": "C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-0tool8x8\\Scripts\\python.exe -m atlas.cli --db data/atlas.db ingest corpus/campus",
       "exit": 0,
-      "seconds": 1.99,
+      "seconds": 2.37,
       "stdout_tail": [
         "ingested 34 new chunks from 18 files into tenant 'campus'"
       ],
@@ -62,9 +62,9 @@
     {
       "step": "eval gate in the clean clone",
       "cwd": "clean-clone",
-      "command": "C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-livnpz3r\\Scripts\\python.exe -m eval.run_eval --gate",
+      "command": "C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-0tool8x8\\Scripts\\python.exe -m eval.run_eval --gate",
       "exit": 0,
-      "seconds": 0.68,
+      "seconds": 0.77,
       "stdout_tail": [
         "gate: recall@10 0.9167 (baseline 0.9167)",
         "gate: refusal accuracy 1.0000 (minimum 0.9)",
