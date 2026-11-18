@@ -135,3 +135,13 @@ def test_documents_ingest_is_not_offered_over_http(api):
     # ADR-0012: ingest stays a CLI operation; the absence is part of the published contract.
     status, payload = _call(f"{api}/v1/documents", method="POST", body={"tenant": "campus"})
     assert status == 404 and payload["error"]["code"] == "NOT_FOUND"
+
+
+def test_demo_page_is_served_for_people(api):
+    """FR-22: `/` is a page a person can use without reading anything else."""
+    with urllib.request.urlopen(f"{api}/", timeout=10) as response:
+        status, body = response.status, response.read().decode("utf-8")
+    assert status == 200
+    lowered = body.lower()
+    assert "<form" in lowered and 'type="search"' in lowered
+    assert "citations" in lowered
