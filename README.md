@@ -360,6 +360,8 @@ Every claim in this README comes from a target that rewrites a file in `results/
 | 12 | [Solution Design](docs/12-solution-design.md) | the problem in business terms, journeys, cost, rollout |
 | 13 | [Handover Runbook](docs/13-handover-runbook.md) | how to run it, prove it, and extend it |
 | 14 | [Request Trace](docs/14-request-trace.md) | the life of one request, stage by stage |
+| 15 | [Demo Script](docs/15-demo-script.md) | the five-minute walkthrough: one answered, one refused, one injected, one degraded |
+| 16 | [Completion Plan](docs/16-completion-plan.md) | what is left between `v1.1` and "done", with exit criteria and the definition of done |
 | — | [Decision records](docs/adr/) | eleven decisions, each with the alternative it rejected and the report behind it |
 
 ## Status
