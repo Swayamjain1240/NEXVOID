@@ -1,0 +1,130 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, frozen at M1)",
+    "commit": "a42ace5",
+    "regenerate_with": "python -m eval.run_eval"
+  },
+  "method": "The HTTP contract, probed against a live server (M18, FR-20..FR-23).\n\nThe SRS promises a surface; this script starts the real server over a freshly ingested copy of the\ncorpus on an ephemeral port and calls every documented route, including the ones that are supposed\nto fail. A contract that is only tested for the happy path is a contract nobody checked.\n\nWhat is asserted, per probe:\n\n- **status** - the documented code, not \"some 2xx\";\n- **shape** - the answer body carries the eleven top-level fields and four stage timings (FR-21),\n  the error body is `{\"error\": {\"code\", \"message\"}}` with no traceback (FR-23);\n- **metrics realness** - `GET /v1/metrics` counts the requests this probe just made (FR-20);\n- **absence** - `POST /v1/documents` is not offered, because ADR-0012 keeps ingest a CLI operation.\n  The absence is probed so it is part of the published contract instead of an omission.\n\nWrites `results/api_contract.md` and `results/api_contract.json`.",
+  "base": "ephemeral loopback port",
+  "answer_keys": [
+    "citations",
+    "confidence",
+    "degraded",
+    "mode",
+    "query",
+    "refusal_reason",
+    "refused",
+    "text",
+    "timings",
+    "trace_id",
+    "unseen"
+  ],
+  "timing_stages": [
+    "extract_ms",
+    "gate_ms",
+    "retrieve_ms",
+    "total_ms"
+  ],
+  "probes": [
+    {
+      "method": "GET",
+      "path": "/v1/healthz",
+      "expected": 200,
+      "status": 200,
+      "problems": [],
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "expected": 200,
+      "status": 200,
+      "problems": [],
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/ask?q=...",
+      "expected": 200,
+      "status": 200,
+      "problems": [],
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/ask",
+      "expected": 200,
+      "status": 200,
+      "problems": [],
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/ask",
+      "expected": 200,
+      "status": 200,
+      "problems": [],
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/ask",
+      "expected": 400,
+      "status": 400,
+      "problems": [],
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/ask",
+      "expected": 400,
+      "status": 400,
+      "problems": [],
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/ask?q=...",
+      "expected": 400,
+      "status": 400,
+      "problems": [],
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/metrics",
+      "expected": 200,
+      "status": 200,
+      "problems": [],
+      "pass": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/documents",
+      "expected": 404,
+      "status": 404,
+      "problems": [],
+      "pass": true
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/ask",
+      "expected": 405,
+      "status": 405,
+      "problems": [],
+      "pass": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/nope",
+      "expected": 404,
+      "status": 404,
+      "problems": [],
+      "pass": true
+    }
+  ],
+  "metrics_requests_seen": 12,
+  "all_pass": true
+}

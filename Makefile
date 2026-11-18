@@ -7,7 +7,7 @@ VENV_PY ?= $(PY)
 # on a Windows checkout the venv interpreter is .venv/Scripts/python.exe;
 # on Unix .venv/bin/python - set VENV_PY accordingly when using venv targets.
 
-.PHONY: corpus limits test eval embed ablation holdout support answer-selection fusion phrase safety bench soak soak-interactive dashboard trace gate-demo check ci setup ingest serve handover
+.PHONY: corpus limits test eval embed ablation holdout support answer-selection fusion phrase api-contract safety bench soak soak-interactive dashboard trace gate-demo check ci setup ingest serve handover
 
 corpus:
 	$(PY) scripts/check_corpus.py
@@ -48,6 +48,10 @@ fusion:
 # M17: phrase-level novelty, judged on the appended v4 set
 phrase:
 	$(PY) -m eval.phrase
+
+# M18: probe every documented HTTP route against a live server (FR-20..FR-23)
+api-contract:
+	$(PY) -m eval.api_contract
 
 # stage-2 layer 2 (M9): injection suite, tenant probes, log audit, degraded mode
 safety:
