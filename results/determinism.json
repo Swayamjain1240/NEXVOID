@@ -1,0 +1,41 @@
+{
+  "provenance": {
+    "generator": "python -m eval.determinism",
+    "runs": 2,
+    "files": [
+      "eval_report.json",
+      "baseline.json"
+    ],
+    "ignored_keys": []
+  },
+  "runs": [
+    {
+      "command": "C:\\Users\\Swayam Jain\\OneDrive\\Desktop\\swayam\\PROJECT\\Model\\model 1\\.venv\\Scripts\\python.exe -m eval.run_eval",
+      "exit": 0,
+      "seconds": 1.32,
+      "tail": [
+        "  chosen theta=0.25 answer_rate=0.00 refusal_accuracy=1.00",
+        "results written: C:\\Users\\Swayam Jain\\OneDrive\\Desktop\\swayam\\PROJECT\\Model\\model 1\\results\\eval_report.md"
+      ],
+      "stderr": [],
+      "index": 1
+    },
+    {
+      "command": "C:\\Users\\Swayam Jain\\OneDrive\\Desktop\\swayam\\PROJECT\\Model\\model 1\\.venv\\Scripts\\python.exe -m eval.run_eval",
+      "exit": 0,
+      "seconds": 1.28,
+      "tail": [
+        "  chosen theta=0.25 answer_rate=0.00 refusal_accuracy=1.00",
+        "results written: C:\\Users\\Swayam Jain\\OneDrive\\Desktop\\swayam\\PROJECT\\Model\\model 1\\results\\eval_report.md"
+      ],
+      "stderr": [],
+      "index": 2
+    }
+  ],
+  "hashes": [
+    "7b147a868c8fa0a2",
+    "7b147a868c8fa0a2"
+  ],
+  "differences": [],
+  "verdict": "PASS"
+}

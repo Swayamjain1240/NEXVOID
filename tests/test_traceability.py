@@ -22,7 +22,6 @@ EVIDENCE = ROOT / "results" / "EVIDENCE.md"
 EXEMPT = {
     "NFR-02": "stage 2 (LLM generation) is not built; its budget cannot be measured on the MVP",
     "NFR-06": "faithfulness needs a generative answer; extractive answers are verbatim passages",
-    "NFR-15": "each report fixes corpus, seed and encoder, but no automated double-run diff exists",
 }
 
 ID = re.compile(r"\b(?:FR|NFR)-\d{2}\b")
