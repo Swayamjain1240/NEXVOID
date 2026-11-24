@@ -36,9 +36,18 @@ def fold_plural(word: str) -> str:
 
 
 def tokenize(text: str) -> list[str]:
-    """Lowercase alphanumeric tokens, stopword-filtered, plural-folded, in text order."""
-    raw = _TOKEN_RE.findall(text.lower())
-    return [fold_plural(word) for word in raw if fold_plural(word) not in STOPWORDS]
+    """Lowercase alphanumeric tokens, stopword-filtered, plural-folded, in text order.
+
+    The fold happens once per word. The obvious comprehension
+    `[fold_plural(w) for w in raw if fold_plural(w) not in STOPWORDS]` folds every token
+    twice, which was half of this function's cost before M22 measured it.
+    """
+    tokens: list[str] = []
+    for word in _TOKEN_RE.findall(text.lower()):
+        folded = fold_plural(word)
+        if folded not in STOPWORDS:
+            tokens.append(folded)
+    return tokens
 
 
 def bigrams(tokens: list[str]) -> list[str]:

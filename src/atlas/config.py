@@ -106,6 +106,12 @@ class Settings:
     max_citations: int = 5
     citation_snippet_chars: int = 320
 
+    # M22 ablation arm: `ATLAS_PERF_NAIVE=1` restores the pre-M22 code path (the gate
+    # re-tokenises the winning passage, and the query is embedded twice) so
+    # `bench/perf.py` can measure both arms in one run, on one machine, with identical
+    # scores. Production is always the fast arm; nothing selects this but the benchmark.
+    perf_naive: bool = os.environ.get("ATLAS_PERF_NAIVE", "") == "1"
+
     # persistence
     default_db_path: str = "data/atlas.db"
     default_tenant: str = "campus"

@@ -78,6 +78,20 @@ class Reranker:
             tokens, bigrams(tokens), chunk_tokens, set(bigrams(tokenize(text)))
         )
 
+    def coverage_of_tokens(
+        self,
+        query_tokens: list[str],
+        query_bigrams: list[str],
+        chunk_set: frozenset[str],
+        chunk_bigrams: frozenset[str],
+    ) -> float:
+        """The same number as `coverage`, when the caller already holds the chunk's sets (M22).
+
+        M5 cached these sets for the reranker and left the gate re-tokenising the winning
+        passage on every request; that was 71% of query CPU until M22 (`results/perf-m22.md`).
+        """
+        return self._coverage(query_tokens, query_bigrams, chunk_set, chunk_bigrams)
+
     def _coverage(
         self,
         query_tokens: list[str],

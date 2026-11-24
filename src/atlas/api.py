@@ -94,12 +94,22 @@ def answer_payload(answer, started: float) -> dict:
         "timings": {
             **answer.timings_ms,
             # total_ms is the sum of the stages, so it must not be added again here: doing so
-            # made this field negative and quietly lied about the overhead.
+            # made this field negative and quietly lied about the overhead. From M22 the
+            # retrieval breakdown is nested, so a sub-stage cannot be counted twice either.
             "serialize_ms": round((time.perf_counter() - started) * 1000.0, 3)
-            - sum(value for key, value in answer.timings_ms.items() if key != "total_ms"),
+            - _stage_total(answer.timings_ms),
             "total_ms": round((time.perf_counter() - started) * 1000.0, 3),
         },
     }
+
+
+def _stage_total(timings: dict[str, float | dict[str, float]]) -> float:
+    """Sum of the top-level numeric stages; `total_ms` and nested breakdowns are excluded."""
+    return sum(
+        value
+        for key, value in timings.items()
+        if key != "total_ms" and not isinstance(value, dict)
+    )
 
 
 def error_payload(code: str, message: str) -> dict:

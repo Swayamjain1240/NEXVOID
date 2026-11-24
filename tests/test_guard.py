@@ -65,7 +65,9 @@ def test_a_blocked_query_is_a_deliberate_refusal_not_an_error(mini_index):
     assert answer.mode == "blocked"
     assert answer.citations == ()
     assert answer.text == ""
-    assert set(answer.timings_ms) == {"retrieve_ms", "gate_ms", "extract_ms", "total_ms"}
+    assert set(answer.timings_ms) >= {"retrieve_ms", "gate_ms", "extract_ms", "total_ms"}
+    # M22 adds a nested breakdown; a blocked query retrieves nothing, so it is empty
+    assert answer.timings_ms["retrieval"] == {}
 
 
 def test_guard_costs_negligible_time():

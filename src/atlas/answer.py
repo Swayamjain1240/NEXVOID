@@ -7,10 +7,9 @@ text came from (FR-14, FR-15). Refusal is a deliberate `Answer` with `refused=Tr
 citations (FR-16), never an exception: an empty tenant is "no documents", which the gate
 refuses safely. FR-19: an empty or stopword-only query is an InputError (HTTP 400 upstream).
 
-M21: `as_of` answers the question against the revisions in force on that date (FR-29). When
-nothing in force can answer it but a *later* revision can, the refusal says so and names the
-date that revision took effect (FR-30) - "not yet in effect" and "I don't know" are different
-facts, and a policy assistant that conflates them is the reason this feature exists.
+M21: `as_of` answers against the revisions in force on that date (FR-29), and a rule that only a
+later revision carries is refused with that date (FR-30) - "not yet" and "I don't know" are
+different facts, and an assistant that conflates them is unusable at a counter.
 """
 
 from __future__ import annotations
@@ -64,13 +63,17 @@ def answer_query(
                 "gate_ms": _ms(time.perf_counter() - total_start),
                 "extract_ms": 0.0,
                 "total_ms": _ms(time.perf_counter() - total_start),
+                "retrieval": {},
             },
             trace_id=trace_id,
             as_of=as_of,
         )
 
+    stages: dict[str, float] = {}  # M22: sub-stages, written into this request's dict
     retrieve_start = time.perf_counter()
-    report = index.diagnostics(query, tenant_id=tenant_id, mode=mode, as_of=as_of)
+    report = index.diagnostics(
+        query, tenant_id=tenant_id, mode=mode, as_of=as_of, timings=stages
+    )
     retrieve_ms = (time.perf_counter() - retrieve_start) * 1000.0
     gate_start = time.perf_counter()
 
@@ -115,11 +118,12 @@ def answer_query(
         if not_yet:
             refusal_reason = "not_yet_in_effect"
     gate_ms = (time.perf_counter() - gate_start) * 1000.0
-    timings = {
+    timings: dict[str, float | dict[str, float]] = {
         "retrieve_ms": _ms(retrieve_ms),
         "gate_ms": _ms(gate_ms),
         "extract_ms": 0.0,
         "total_ms": _ms((time.perf_counter() - total_start) * 1000.0),
+        "retrieval": {key: _ms(value) for key, value in stages.items()},
     }
     if not gate_passes:
         return Answer(  # refusal is deliberate, never an exception (FR-16, FR-17, FR-30)
@@ -179,11 +183,8 @@ def answer_query(
 
 
 def _extract(query: str, passage: Passage, *, max_sentences: int) -> str:
-    """The generator. `_failing()` is the fault injection the degraded path is measured with.
-
-    Selection itself lives in `select.py` (FR-13, FR-18): the query-coverage scoring, and the
-    guard that stops a document's topic list from being returned as the answer (M15).
-    """
+    """The generator; selection lives in `select.py` (FR-13, FR-18) and `_failing()` is the
+    fault injection the degraded path is measured with."""
     if _failing():
         raise DependencyError("simulated generator failure")
     return select(query, passage, max_sentences=max_sentences)

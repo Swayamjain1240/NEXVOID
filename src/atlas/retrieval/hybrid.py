@@ -17,6 +17,10 @@ from ..store import Store
 from ..versions import parse_as_of
 from .view import TenantView
 
+# M22: the stages inside one retrieval, so a latency claim has an address instead of a
+# single `retrieve_ms` that covers guard, BM25, vectors, fusion, ranking and the gate.
+STAGES = ("embed_ms", "bm25_ms", "dense_ms", "fuse_ms", "rank_ms", "cosine_ms", "coverage_ms")
+
 MODES = ("sparse", "dense", "hybrid")
 
 
@@ -41,6 +45,15 @@ class HybridIndex:
         legitimate state the M3 refusal gate decides about. With `as_of`, an empty result can
         also mean "nothing was in force on that date", which the answer path names (FR-30).
         """
+        query = self._validate(query, tenant_id=tenant_id, k=k, mode=mode)
+        as_of = parse_as_of(as_of)
+        view = self._view(tenant_id)
+        if view is None:
+            return []
+        return view.search(query, k=k, mode=mode, allowed=view.allowed(as_of))
+
+    def _validate(self, query: str, *, tenant_id: str, k: int, mode: str) -> str:
+        """The input contract, in one place so `diagnostics` can check before doing work."""
         if not tenant_id:
             raise InputError("empty tenant_id")
         if k < 1:
@@ -50,25 +63,42 @@ class HybridIndex:
         query = query.strip()
         if not query:
             raise InputError("empty query")
-        as_of = parse_as_of(as_of)
-        view = self._view(tenant_id)
-        if view is None:
-            return []
-        return view.search(query, k=k, mode=mode, allowed=view.allowed(as_of))
+        return query
 
     def diagnostics(
-        self, query: str, *, tenant_id: str, mode: str = "hybrid", as_of: str = ""
+        self,
+        query: str,
+        *,
+        tenant_id: str,
+        mode: str = "hybrid",
+        as_of: str = "",
+        timings: dict[str, float] | None = None,
     ) -> tuple[Passage, dict] | None:
         """Top passage plus its cosine / coverage / confidence split (ATL-TDD-001 s.7).
 
-        Used by the eval harness for the refusal decision; returns None when the tenant view
-        is empty, which the harness counts as a refusal at every theta.
+        Used by the eval harness for the refusal decision and by the answer path; returns
+        None when the tenant view is empty, which the harness counts as a refusal at every
+        theta. `timings` (M22) is filled with the sub-stages of this one retrieval; the query
+        is embedded once here and the vector is shared with the gate.
         """
-        passages = self.search(query, tenant_id=tenant_id, k=1, mode=mode, as_of=as_of)
+        query = self._validate(query, tenant_id=tenant_id, k=1, mode=mode)
+        view = self._view(tenant_id)
+        if view is None:
+            return None
+        query_vec = view.embed_query(query, timings=timings)
+        passages = view.search(
+            query,
+            k=1,
+            mode=mode,
+            allowed=view.allowed(parse_as_of(as_of)),
+            query_vec=query_vec,
+            timings=timings,
+        )
         if not passages:
             return None
-        view = self._view(tenant_id)
-        return passages[0], view.diagnose(query, passages[0])
+        return passages[0], view.diagnose(
+            query, passages[0], query_vec=query_vec, timings=timings
+        )
 
     def candidate_set(
         self, query: str, *, tenant_id: str, as_of: str = ""

@@ -7,7 +7,7 @@ VENV_PY ?= $(PY)
 # on a Windows checkout the venv interpreter is .venv/Scripts/python.exe;
 # on Unix .venv/bin/python - set VENV_PY accordingly when using venv targets.
 
-.PHONY: corpus limits test eval embed ablation holdout support answer-selection fusion phrase api-contract determinism temporal safety bench soak soak-interactive dashboard trace gate-demo check ci setup ingest serve handover
+.PHONY: corpus limits test eval embed ablation holdout support answer-selection fusion phrase api-contract determinism temporal perf safety bench soak soak-interactive dashboard trace gate-demo check ci setup ingest serve handover
 
 corpus:
 	$(PY) scripts/check_corpus.py
@@ -60,6 +60,10 @@ determinism:
 # M21: FR-29/FR-30 - dated questions against versioned revisions; fails on any future leak
 temporal:
 	$(PY) -m eval.temporal
+
+# M22: the retrieval path before/after, two arms in one run; fails if the arms disagree
+perf:
+	$(PY) -m bench.perf
 
 # stage-2 layer 2 (M9): injection suite, tenant probes, log audit, degraded mode
 safety:

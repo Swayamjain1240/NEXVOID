@@ -75,7 +75,10 @@ class Answer:
     refused: bool
     mode: str
     degraded: bool
-    timings_ms: dict[str, float]
+    # Four top-level stages plus, from M22, a nested "retrieval" breakdown of the stage
+    # that dominates (embed / bm25 / dense / fuse / rank). The payload keeps them nested so
+    # `serialize_ms` cannot double-count a sub-stage as a top-level one.
+    timings_ms: dict[str, float | dict[str, float]]
     trace_id: str
     # Why a refusal happened, so a caller can tell "not close enough" from "the corpus never
     # mentions this" - two facts that deserve different words in a UI (M14, FR-16).

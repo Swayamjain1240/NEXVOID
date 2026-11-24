@@ -52,6 +52,10 @@ def _problems(answer_shape_payload: dict) -> list[str]:
     stages = set(answer_shape_payload.get("timings", {}))
     if not stages >= STAGES:
         problems.append(f"missing timings {sorted(STAGES - stages)}")
+    # M22: the dominant stage is broken down in every response, not only in a report
+    breakdown = answer_shape_payload.get("timings", {}).get("retrieval")
+    if not isinstance(breakdown, dict) or not breakdown:
+        problems.append("timings.retrieval is missing or empty")
     return problems
 
 
