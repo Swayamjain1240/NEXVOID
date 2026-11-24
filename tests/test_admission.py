@@ -68,6 +68,25 @@ def test_a_waiter_gives_up_after_the_deadline():
     gate.release()
 
 
+def test_the_bound_is_configurable_from_the_environment(monkeypatch):
+    monkeypatch.setenv("ATLAS_MAX_INFLIGHT", "4")
+    monkeypatch.setenv("ATLAS_MAX_WAITING", "0")
+    monkeypatch.setenv("ATLAS_ADMISSION_WAIT_MS", "2.5")
+    settings = SETTINGS.__class__()
+    assert settings.max_inflight == 4
+    assert settings.max_waiting == 0
+    assert settings.admission_wait_ms == pytest.approx(2.5)
+    gate = Admission(limit=settings.max_inflight, queue_limit=settings.max_waiting,
+                     wait_ms=settings.admission_wait_ms)
+    assert gate.snapshot()["limit"] == 4
+
+
+def test_a_malformed_bound_refuses_to_start(monkeypatch):
+    monkeypatch.setenv("ATLAS_MAX_INFLIGHT", "lots")
+    with pytest.raises(ValueError, match="ATLAS_MAX_INFLIGHT"):
+        SETTINGS.__class__()
+
+
 def test_the_snapshot_reports_the_rate_not_just_the_counts():
     gate = Admission(limit=1, queue_limit=0, wait_ms=0)
     assert gate.acquire() is True

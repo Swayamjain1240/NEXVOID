@@ -7,7 +7,18 @@ sweeps in M3 can only move numbers they can see.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+
+def _env_number(name: str, default, cast):
+    """An env var that must parse: a typo refuses to start, with the variable named."""
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        return cast(raw)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a number, not {raw!r}") from error
 
 
 @dataclass(frozen=True)
@@ -110,9 +121,22 @@ class Settings:
     # operating point so the measured target never queues: the bound exists to stop
     # *overload* from becoming everyone's latency, not to throttle normal traffic.
     # Beyond it, a request may wait `admission_wait_ms` and is then rejected as 503.
-    max_inflight: int = 32
-    max_waiting: int = 64
-    admission_wait_ms: float = 25.0
+    # default_factory, not a plain default: a dataclass evaluates a default once at import,
+    # which would freeze the environment before a test (or a benchmark) could change it.
+    max_inflight: int = field(
+        default_factory=lambda: _env_number("ATLAS_MAX_INFLIGHT", 32, int)
+    )
+    max_waiting: int = field(
+        default_factory=lambda: _env_number("ATLAS_MAX_WAITING", 64, int)
+    )
+    admission_wait_ms: float = field(
+        default_factory=lambda: _env_number("ATLAS_ADMISSION_WAIT_MS", 25.0, float)
+    )
+
+    # Benchmark-only fault injection (M23): pad every *answered* request so the admission bound
+    # is reachable on one laptop, where ~2 ms answers never queue. The 503 path skips it, which
+    # is the point - a shed request must not pay the cost of the work it was refused.
+    slow_ms: float = field(default_factory=lambda: _env_number("ATLAS_SLOW_MS", 0.0, float))
 
     # M22 ablation arm: `ATLAS_PERF_NAIVE=1` restores the pre-M22 code path (the gate
     # re-tokenises the winning passage, and the query is embedded twice) so

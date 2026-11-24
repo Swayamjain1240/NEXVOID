@@ -15,6 +15,7 @@ from .config import SETTINGS
 from .retrieval import HybridIndex
 from .server import serve
 from .store import Store
+from .workers import serve_workers
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -25,6 +26,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "ask":
         return _ask(args)
     if args.command == "serve":
+        if args.workers > 1:
+            return serve_workers(
+                db=args.db,
+                host=args.host or SETTINGS.serve_host,
+                port=args.port or SETTINGS.serve_port,
+                workers=args.workers,
+            )
         return serve(db=args.db, host=args.host, port=args.port)
     return _stats(args)
 
@@ -59,6 +67,12 @@ def _parser() -> argparse.ArgumentParser:
     serve_cmd = sub.add_parser("serve", help="run the /v1/ask JSON API (stdio/jobs, no containers)")
     serve_cmd.add_argument("--host", default=None)
     serve_cmd.add_argument("--port", type=int, default=None)
+    serve_cmd.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="worker processes sharing one port (M24); metrics are per worker",
+    )
     return parser
 
 

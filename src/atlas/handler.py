@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse
 
-from . import api
+from . import api, status
 from .answer import answer_query
 from .interfaces import AtlasError, InputError
 from .metrics import METRICS
@@ -109,6 +109,10 @@ def make_handler(state) -> type:
 
         def _answer(self, request: dict) -> None:
             tenant = self.headers.get("X-Tenant", state.settings.default_tenant)
+            if state.settings.slow_ms:
+                # M23 benchmark hook (ATLAS_SLOW_MS): pad the answer path only, so an overload
+                # run can hold the bound. Never set in production, and never on the 503 path.
+                time.sleep(state.settings.slow_ms / 1000.0)
             try:
                 answer = answer_query(
                     state.index,
@@ -135,22 +139,10 @@ def make_handler(state) -> type:
             return True
 
         def _metrics(self) -> None:
-            payload = METRICS.snapshot()
-            # M23: capacity travels with the counters, so shedding is visible, not inferred
-            payload["admission"] = state.admission.snapshot()
-            self._json(200, payload)
+            self._json(200, status.metrics_payload(state))
 
         def _health(self) -> None:
-            # theta and the encoder go out with liveness because the UI has to draw the
-            # refusal line at the threshold this process is actually running, not a
-            # number copied into the page from a report.
-            self._json(200, {
-                "status": "ok",
-                "tenants_served": len(state.index._views),
-                "embedder": state.settings.embedder_kind,
-                "theta": state.settings.theta,
-                "mode": "hybrid",
-            })
+            self._json(200, status.health_payload(state))
 
         def _demo(self) -> None:
             if not DEMO_PAGE.exists():
