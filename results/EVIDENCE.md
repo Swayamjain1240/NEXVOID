@@ -29,3 +29,5 @@ test or report that demonstrates them.
 | NFR-01 | 30 minutes at 10 unpaced users, p95 over served traffic plus the shed rate | `results/soak.md` |
 | NFR-01 | the load curve with shed counted apart from failures, at 1/10/50 users | `results/bench.md` |
 | FR-20 | `/v1/metrics` publishes the admission block: limit, queue, inflight, rejected | `results/api_contract.md` |
+| NFR-01 | the bound under real concurrency: 76.5% shed at 4 slots, with served and shed p95 | `results/overload.md` |
+| NFR-01 | 1/2/4 worker processes behind one port: p95 and throughput per level | `results/workers.md` |

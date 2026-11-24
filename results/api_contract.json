@@ -3,7 +3,7 @@
     "platform": "Windows-11-10.0.26300-SP0",
     "python": "3.12.10",
     "corpus": "corpus/campus (18 documents, frozen at M1)",
-    "commit": "5398f23",
+    "commit": "6db33cc",
     "regenerate_with": "python -m eval.run_eval"
   },
   "method": "The HTTP contract, probed against a live server (M18, FR-20..FR-23).\n\nThe SRS promises a surface; this script starts the real server over a freshly ingested copy of the\ncorpus on an ephemeral port and calls every documented route, including the ones that are supposed\nto fail. A contract that is only tested for the happy path is a contract nobody checked.\n\nWhat is asserted, per probe:\n\n- **status** - the documented code, not \"some 2xx\";\n- **shape** - the answer body carries the eleven top-level fields and four stage timings (FR-21),\n  the error body is `{\"error\": {\"code\", \"message\"}}` with no traceback (FR-23);\n- **metrics realness** - `GET /v1/metrics` counts the requests this probe just made (FR-20);\n- **absence** - `POST /v1/documents` is not offered, because ADR-0012 keeps ingest a CLI operation.\n  The absence is probed so it is part of the published contract instead of an omission.\n\nWrites `results/api_contract.md` and `results/api_contract.json`.",
