@@ -51,8 +51,24 @@ repository is not reproducible, this receipt is the answer.
 | answer selection: topic-list answers 8 → 0, top-1 from the right document 20/24 · 12/12 · 11/12 | `results/answer_selection.md` |
 | fusion depth: offline hybrid 0.88 → 0.92 (NFR-04 met), and the FR-11 counterfactual | `results/fusion.md` |
 | phrase-level novelty on a fresh v4 set: refused, it also refuses answerable questions | `results/phrase.md` |
-| HTTP contract: 12 probes, live server, four documented failures, all PASS | `results/api_contract.md` |
+| HTTP contract: 15 probes, live server, four documented failures, all PASS | `results/api_contract.md` |
+| deliberate overload: 76.5% shed at 4 slots, served p95 93.73 ms, liveness 200 throughout | `results/overload.md` |
+| worker processes: 1/2/4 behind one port, p95 24.96 → 5.10 ms, 378 → 587 rps | `results/workers.md` |
 | Determinism: the eval command run twice, 0 differences (NFR-15) | `results/determinism.md` |
+
+### Capacity knobs (M23/M24)
+
+| variable | default | meaning |
+|---|---:|---|
+| `ATLAS_MAX_INFLIGHT` | 32 | requests served at once |
+| `ATLAS_MAX_WAITING` | 64 | requests allowed to wait for a slot |
+| `ATLAS_ADMISSION_WAIT_MS` | 25 | how long a waiter waits before `503 OVERLOADED` |
+| `ATLAS_SLOW_MS` | 0 | benchmark-only latency padding; never set in production |
+
+`atlas.cli serve --workers N` runs N processes behind one listening socket (the portable form of
+`SO_REUSEPORT`; Windows has no such option). Each worker has its own store, index, admission bound
+and metrics, so `/v1/metrics` describes **one** worker and `pid` in `/v1/healthz` says which one
+answered. A bad numeric value in any of the variables above refuses to start, naming the variable.
 
 ## 3. Known limitations (state them, do not hide them)
 

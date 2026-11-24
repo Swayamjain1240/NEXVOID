@@ -1,7 +1,7 @@
 # 18 — Performance plan (M22–M27)
 
 **Document ID:** ATL-PERF-002 · **Applies to:** post-`v1.5.0` · **Status:** M22 complete at
-`v1.6.0`, M23 complete at `v1.7.0`; M24–M27 proposed
+`v1.6.0`, M23 complete at `v1.7.0`, M24 complete at `v1.8.0`; M25–M27 proposed
 
 The project is complete and every claim is measured. This plan is about making the same system
 faster and more predictable **without weakening the evidence discipline**: each phase ends in a
@@ -102,7 +102,16 @@ work is bytecode. The constraint (no containers) does not forbid processes.
   process is the unit; this makes it explicit rather than surprising).
 
 **Expected:** near-linear throughput to core count at fixed latency. **Exit criteria:** a curve at
-1/2/4 workers, and a statement of where it stops scaling. **Risk:** the breaker and the metrics
+1/2/4 workers, and a statement of where it stops scaling.
+
+**Measured at `v1.8.0` — done, with one plan correction.** `SO_REUSEPORT` does not exist on Windows,
+so the shipped form is the older one: the parent creates the listening socket and each child
+inherits it (`multiprocessing` duplicates the handle with `WSADuplicateSocket`). `results/workers.md`:
+p95 24.96 → 11.08 → **5.10 ms** at 1/2/4 workers (**4.9×**), throughput 378 → 437 → 587 rps (1.55×).
+The throughput number is capped by the *client*: at a fixed 10 users offering one request at a time,
+total rps cannot exceed 10 / service time, so what the extra processes buy at this load is latency,
+not work. Near-linear throughput remains unmeasured and needs a client that can offer more than the
+server can take — a second machine, which L13 says this project does not have. **Risk:** the breaker and the metrics
 window become per process — state that in the report, do not average across processes and call it
 one system.
 

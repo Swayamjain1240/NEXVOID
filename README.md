@@ -204,7 +204,28 @@ Both arms run in one process over the same corpus, alternating across three repe
 | failed requests | 0 | 0 |
 | shed as `503 OVERLOADED` | — | 0 |
 
-The 50 ms target now holds for 30 minutes of unpaced load, not just for a burst. The cause is worth stating precisely: the retrieval work above halved service time, and the bound shipped beside it is a **ceiling**, not the source of the gain — at ~2 ms per request ten clients keep roughly one request in flight, far below the limit of 32. When the load does exceed it, the server answers `503 OVERLOADED` with `Retry-After` in about a millisecond instead of queueing, `/v1/metrics` publishes the capacity block, and liveness is never shed. Full report: `results/soak.md`.
+The 50 ms target now holds for 30 minutes of unpaced load, not just for a burst. The cause is worth stating precisely: the retrieval work above halved service time, and the bound shipped beside it is a **ceiling**, not the source of the gain — at ~2 ms per request ten clients keep roughly one request in flight, far below the limit of 32. When the load does exceed it, the server answers `503 OVERLOADED` with `Retry-After` instead of queueing, `/v1/metrics` publishes the capacity block, and liveness is never shed. Full report: `results/soak.md`.
+
+To see the bound actually bind, `results/overload.md` runs it deliberately under-provisioned: **4 slots, 40 ms of injected latency, 50 users → 76.5% shed**, served p95 93.73 ms, shed p95 46.05 ms, and `/v1/healthz` still answering 200 in ~2 ms while every answer is refused.
+
+| variable | default | meaning |
+|---|---:|---|
+| `ATLAS_MAX_INFLIGHT` | 32 | requests served at once |
+| `ATLAS_MAX_WAITING` | 64 | requests allowed to wait for a slot |
+| `ATLAS_ADMISSION_WAIT_MS` | 25 | how long a waiter waits before the 503 |
+| `ATLAS_SLOW_MS` | 0 | benchmark-only latency padding; never set in production |
+
+### Worker Processes (M24)
+
+`atlas.cli serve --workers N` puts N processes behind one listening socket, which is the portable form of `SO_REUSEPORT` (Windows does not have that option). Same 10 users, 100 requests each, one port:
+
+| workers | p50 | p95 | rps | pids observed |
+|---|---:|---:|---:|---:|
+| 1 | 10.59 ms | 24.96 ms | 378 | 1 |
+| 2 | 5.18 ms | 11.08 ms | 437 | 2 |
+| 4 | 2.50 ms | **5.10 ms** | 587 | 4 |
+
+p95 falls 4.9× and throughput rises 1.55×: at a fixed ten users offering one request at a time, the client caps total throughput long before the workers do, so what the extra processes buy is less queueing. Full report: `results/workers.md`.
 
 ---
 
