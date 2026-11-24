@@ -1,7 +1,7 @@
 # 18 — Performance plan (M22–M27)
 
 **Document ID:** ATL-PERF-002 · **Applies to:** post-`v1.5.0` · **Status:** M22 complete at
-`v1.6.0`; M23–M27 proposed
+`v1.6.0`, M23 complete at `v1.7.0`; M24–M27 proposed
 
 The project is complete and every claim is measured. This plan is about making the same system
 faster and more predictable **without weakening the evidence discipline**: each phase ends in a
@@ -77,7 +77,15 @@ micro-optimisation fixes that — a bound does.
 
 **Expected:** p95 ≤ 50 ms at 10 users, with a non-zero reject rate reported rather than hidden.
 **Exit criteria:** `results/soak.md` regenerated; the report states the operating point, the reject
-rate, and the throughput delivered. **What would make us abandon it:** if shedding more than ~2% of
+rate, and the throughput delivered.
+
+**What actually happened at `v1.7.0`:** the bound is in (`admission.py`, `503 OVERLOADED`, capacity
+in `/v1/metrics`), but the soak stopped failing for a reason the plan did not predict. M22 cut the
+service time by 2.21×, which moved the 10-user operating point from p95 58.40 ms to **22.88 ms**
+*before* the bound ever bound: with ~2 ms requests, ten clients keep about one request in flight,
+far below `max_inflight=32`. The admission bound is a ceiling on the failure mode, not the source
+of the improvement, and the reports say which is which. The 50-user level, which does reach the
+bound under burst, is where shedding appears. **What would make us abandon it:** if shedding more than ~2% of
 requests is needed to hold the target, the honest answer is that the target belongs at a lower
 concurrency, and NFR-01 gets re-scoped instead of gamed.
 

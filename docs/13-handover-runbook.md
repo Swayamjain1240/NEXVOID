@@ -40,7 +40,7 @@ repository is not reproducible, this receipt is the answer.
 | refusal gate θ = 0.13 calibration story | `results/calibration.md` |
 | fr-11 diagnosis: what hybrid loses, why | `results/fr11_diagnosis.md` |
 | in-process latency (hybrid 0.60 ms mean) | `results/latency.md` |
-| NFR-01: burst PASS 43.25 ms; saturation soak 58.40 ms (miss); interactive soak 19.56 ms (pass) at 10 users | `results/bench.md`, `results/soak.md`, `results/soak-interactive.md` |
+| NFR-01: burst PASS 18.19 ms; saturation soak PASS 22.88 ms; interactive soak PASS at 10 users, 0 shed | `results/bench.md`, `results/soak.md`, `results/soak-interactive.md` |
 | robustness (gate, not retrieval, is the bottleneck) | `results/robustness.md` |
 | handover proof (this runbook, §1) | `results/handover.md` |
 | stage-2 encoder delta (dense 0.75 → 1.00, answer rate 0.29 → 0.88) | `results/embeddings.md` |

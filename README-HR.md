@@ -21,7 +21,7 @@ policy questions, a confident wrong answer is worse than no answer.
 | | result |
 |---|---|
 | **Retrieval quality** — does it find the right document? | recall@10 **0.9583** (best config) on a hand-labelled 24-question set |
-| **Latency** — is it fast enough to use? | p95 **19.56 ms** over 15 minutes at 10 concurrent users, 0 failed requests |
+| **Latency** — is it fast enough to use? | p95 **9.89 ms** over 15 minutes at 10 concurrent users, 0 failed requests |
 | **Safety** — can it be abused? | **40/40** prompt-injection attacks refused · **0** cross-organisation data leaks across 12 probes |
 | **Reproducibility** — do the numbers hold? | a clean clone reproduces them exactly (**PASS**); two identical runs produce **0 differences** |
 
@@ -77,8 +77,10 @@ it does**, and — more unusually — **recording what it fails to do**.
   never score worse than its best component. With a perfect dense retriever that is provably
   equivalent to copying it — so the requirement was formally amended to a measurable form, with the
   proof committed.
-- **Publishing the number that fails the target.** Under 30 minutes of unpaced load, p95 is 58.40 ms
-  against a 50 ms target. That reading sits next to the target, above the passing one.
+- **Publishing the failing number, then saying which change fixed it.** Under 30 minutes of
+  unpaced load, p95 was 58.40 ms against a 50 ms target. It now reads 22.88 ms — and the report
+  attributes that to the retrieval work that halved service time, not to the admission bound that
+  shipped beside it, because the bound never actually bound at that load.
 
 ## What it does not do
 

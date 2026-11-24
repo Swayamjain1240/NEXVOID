@@ -62,7 +62,7 @@ ATLAS_FAULT=generator python -m atlas.cli serve      # second terminal
 
 - The answer comes back `degraded: true` with the retrieved passage verbatim, because the
   breaker tripped instead of paying the failure again (`results/safety.md`: 3/3).
-- Close on the ledger: `make bench` (NFR-01 p95 43.25 ms at 10 users, 359 rps at 50),
+- Close on the ledger: `make bench` (NFR-01 p95 18.19 ms at 10 users, 544 rps at 50),
   `make gate-demo` (the CI gate failing on purpose, exit code 1), and `dashboard.html`.
 
 ## What is not in this demo

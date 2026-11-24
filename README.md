@@ -141,9 +141,9 @@ The ablation study evaluated retrieval configurations to isolate the reranking s
 | Benchmark condition | Result |
 |---|---:|
 | Burst workload | 10 concurrent users |
-| Burst p95 latency | 37.2 ms |
+| Burst p95 latency | 18.2 ms |
 | Sustained workload | 15 minutes |
-| Sustained p95 latency | 19.56 ms |
+| Sustained p95 latency | 9.89 ms |
 | Failed requests | 0 |
 
 These measurements describe the tested single-node workloads, not a guarantee of performance under arbitrary production traffic.
@@ -192,6 +192,19 @@ Six dated revisions of three policies make "what did this rule say in 2024" answ
 | after (`v1.6.0`) | 0.342 ms | 0.797 ms | 2,924 | 138 |
 
 Both arms run in one process over the same corpus, alternating across three repeats (median reported), and the script fails unless they return identical text, citations, confidence and refusal decisions — so the **2.21×** cannot come from doing less work. Two changes account for it: the confidence gate reads the token sets the index already caches instead of re-tokenising the winning passage on every request, and the query is embedded once rather than twice. Full report: `results/perf-m22.md`.
+
+### Saturation and Admission Control (M23)
+
+| 10 unpaced users, 30 minutes | before (`v1.6.0`) | after (`v1.7.0`) |
+|---|---:|---:|
+| p95 | 58.40 ms | **22.88 ms** |
+| p50 | 24.59 ms | 9.01 ms |
+| sustained throughput | 349 rps | 910 rps |
+| requests answered | 628,983 | 1,638,403 |
+| failed requests | 0 | 0 |
+| shed as `503 OVERLOADED` | — | 0 |
+
+The 50 ms target now holds for 30 minutes of unpaced load, not just for a burst. The cause is worth stating precisely: the retrieval work above halved service time, and the bound shipped beside it is a **ceiling**, not the source of the gain — at ~2 ms per request ten clients keep roughly one request in flight, far below the limit of 32. When the load does exceed it, the server answers `503 OVERLOADED` with `Retry-After` in about a millisecond instead of queueing, `/v1/metrics` publishes the capacity block, and liveness is never shed. Full report: `results/soak.md`.
 
 ---
 

@@ -1,6 +1,6 @@
 # Limitations register
 
-**Document ID:** ATL-LIM-001 · **Applies to:** tag `v1.4` · **Status:** current
+**Document ID:** ATL-LIM-001 · **Applies to:** tag `v1.7.0` · **Status:** current
 
 Every row names a limitation, the evidence that shows it is real, and what would remove it. A row
 without evidence would be a feeling, so there are none — if a gap is measurable it is in a report,
@@ -16,7 +16,7 @@ anything from `results/`.
 |---|---|---|---|
 | L1 | **FR-17 open.** The refusal gate does not generalise from v1 to the appended sets: accuracy 1.0000 → 0.1667 (v2) → 0.5000 (v3), 0.6667 with the vocabulary-novelty signal. | `results/holdout.md`, `results/support.md` | a signal that separates the classes on unseen topics — semantic entailment of the question against retrieved evidence, which this extractive design does not have |
 | L2 | **FR-11 amended, not met literally.** Hybrid is not guaranteed to match the better of its two retrievers. At depth 10 fusion wins the one contested question; the strict form is provably reached only by copying dense. | `results/fusion.md`, ADR-0010 | a retriever whose errors are uncorrelated with dense's on a corpus this small — i.e. a bigger corpus |
-| L3 | **NFR-01 fails under saturation.** 30 minutes at 10 unpaced users holds p95 58.40 ms against a 50 ms target; the burst test (37.2 ms) and the human-paced soak (19.56 ms) both pass. | `results/soak.md`, `results/bench.md`, `results/soak-interactive.md` | a queue with a hard admission bound — i.e. a real server, not the stdlib threading server |
+| L3 | **NFR-01 is met, and the admission bound is barely exercised by the load that proves it.** After M22 the 10-user soak reads p95 22.88 ms (was 58.40) with **nothing shed**: at ~2 ms per request, ten clients keep about one request in flight against a limit of 32. The committed 50-user burst sheds nothing either, so the bound is exercised by `tests/test_admission.py` and not by load: a workload holding more than 32 concurrent slow requests is measured nowhere. | `results/soak.md`, `results/bench.md`, `tests/test_admission.py` | a load generator that opens more in-flight work than the bound (slow queries, larger corpus), or a queue-depth curve at 100+ users |
 | L4 | **Answer selection is imperfect.** The returned sentence is chosen by a scoring rule, not by comprehension: 8 of 24 v1 answers opened with a document's topic list before M15, 0 after, but a rule tuned on 24 questions is not a guarantee. | `results/answer_selection.md` | a reader model, which is stage 2 |
 
 ## 2. Things this project deliberately does not have
@@ -26,7 +26,7 @@ anything from `results/`.
 | L5 | **No generative stage.** Answers are extracted spans; there is no LLM, no streaming, no faithfulness score. | `docs/16-completion-plan.md` non-goals; NFR-02 and NFR-06 exempt in `tests/test_traceability.py` | questions the corpus answers in a different vocabulary than they are asked in are refused, not paraphrased |
 | L6 | **No write API.** Ingest is `atlas.cli ingest`; there is no HTTP upload, delete or update. | ADR-0012, `results/api_contract.md` probe 10 | ingestion is an operator act with filesystem access; no multi-user editing |
 | L7 | **No identity or authorization beyond one shared token.** `X-Tenant` selects a tenant; the token gates all of them. | `src/atlas/handler.py`, `results/safety.md` (tenancy probes) | one leaked token reads every tenant |
-| L8 | **No rate limiting, quotas or backpressure.** | `docs/13-handover-runbook.md` | a single client can saturate the process; L3 is what that looks like |
+| L8 | **No rate limiting, quotas or per-client fairness.** M23 added backpressure — a bounded admission queue that sheds with `503 OVERLOADED` — but the bound is global and first-come: one client can occupy every slot, and nothing meters how many requests a tenant sends. | `src/atlas/admission.py`, `results/bench.md`, `docs/13-handover-runbook.md` | per-token quotas and a fair queue; the current bound protects the process, not the other tenants |
 | L9 | **No backup, rotation or migration story.** SQLite file, replaced document by document on checksum. | `src/atlas/store.py` | losing `data/*.db` loses the index; it is rebuildable from `corpus/` only |
 
 ## 3. Limits of the evidence itself
