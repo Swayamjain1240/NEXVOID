@@ -112,6 +112,12 @@ Combines complementary retrieval techniques to improve evidence discovery.
 - Enforces a 200-line ceiling for individual modules.
 - Enforces 12 architecture rules through an import-graph test.
 
+### 6. Temporal Revision Windows
+
+- Keeps every revision of a document with the date range it was in force (`valid_from`, `valid_to`).
+- Filters by date inside both retrievers, before fusion, so a superseded revision cannot influence a ranked result.
+- Answers a question as of a date, and refuses a rule that did not exist yet while naming the date it took effect.
+
 ---
 
 ## Benchmark Results
@@ -157,13 +163,26 @@ These are observed results from the tested security cases, not proof of universa
 
 | Engineering check | Result |
 |---|---:|
-| Automated tests | 149 |
+| Automated tests | 159 |
 | Architecture rules enforced | 12 |
-| Architecture decision records | 12 |
-| Frozen evaluation question sets | 4 |
+| Architecture decision records | 13 |
+| Frozen evaluation question sets | 5 |
 | Determinism probe | 0 differences |
+| Dated temporal questions | 12 |
 
 The project also includes a CI quality-gate failure demonstration and a clean-clone handover procedure.
+
+### Temporal Correctness
+
+| Temporal check | Result |
+|---|---:|
+| Dated evaluation questions | 12 |
+| Version accuracy (top passage is the revision in force) | 1.0000 |
+| Not-yet-in-effect refusals that name the effective date | 3 / 3 |
+| Citations post-dating the question (future leaks) | 0 |
+| Control: undated runs citing a not-yet-effective revision | 4 of 9 |
+
+Six dated revisions of three policies make "what did this rule say in 2024" answerable. Without the date filter, four of nine dated questions are answered from a revision that did not exist yet, and every not-yet question is answered instead of refused. Full table: `results/temporal.md`.
 
 ---
 
@@ -259,6 +278,12 @@ Install the runtime dependency:
 pip install numpy
 ```
 
+Ask a question against the revision that was in force on a given date:
+
+```bash
+python -m atlas.cli --db data/atlas.db ask "minimum attendance in each course" --as-of 2024-06-01
+```
+
 Follow the project's current configuration and startup instructions for launching the service and running its evaluation suite.
 
 ## Engineering Principles
@@ -279,6 +304,8 @@ NEXVOID follows several engineering principles:
 - Single-node benchmarks should not be interpreted as distributed production capacity.
 - Refusal-gate generalization has demonstrated an out-of-sample weakness.
 - Retrieval quality does not independently establish answer correctness for every possible user query.
+- Temporal history is shallow: six authored revisions, effective dates assumed known, and no transaction-time axis.
+- `as_of` answers from the revision in force on a date; it cannot reconstruct what the system said on a past date.
 
 ## Author
 

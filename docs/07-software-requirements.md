@@ -95,6 +95,8 @@ and a measurement harness. Excludes model training, multi-modal input, and conta
 | FR-26 | Eval reports must record provenance | report states corpus size, golden-set size, machine, timestamp, generator name |
 | FR-27 | CI must fail on quality regression | a >2-point drop in recall@10 fails the build |
 | FR-28 | The system must run from a single command | `make setup && make ingest && make eval && make serve` works on a clean clone |
+| FR-29 | A question may be asked **as of a date**, and must be answered from the revisions in force on that date | `as_of` accepted on GET and POST (ISO date, 400 otherwise); no citation may carry a `valid_from` later than `as_of`; `make temporal` reports 0 leaks (`results/temporal.md`, ADR-0013) |
+| FR-30 | A question whose only evidence post-dates the date asked about must be refused with that date | `refused=true`, `refusal_reason="not_yet_in_effect"`, `effective_from` names when the revision takes effect; 3/3 on the frozen dated set |
 
 ---
 
@@ -135,6 +137,7 @@ and a measurement harness. Excludes model training, multi-modal input, and conta
 | FR-20…FR-23 (API) | SwDD §5 | `test_api.py` | contract checks in CI |
 | FR-24…FR-27 (eval) | SDD §5, TDD §9 | `run_eval.py` | `results/eval_report.md` |
 | FR-28 (reproducibility) | Build plan §5 | CI job | green pipeline on clean clone |
+| FR-29, FR-30 (temporal) | ADR-0013 | `test_temporal.py`, `eval/temporal.py` | future-leak rate 0, not-yet accuracy 1.00 |
 | NFR-01…NFR-03 (perf) | SDD §5 | `bench/load_test.py` | p50/p95/p99, RPS |
 | NFR-09, NFR-10 (security) | SDD §11 | `test_guard.py`, probes | leak count, block rate |
 | NFR-12, NFR-13 (structure) | SwDD §1, §9 | import linter, coverage | CI status |

@@ -12,6 +12,8 @@ test or report that demonstrates them.
 | FR-26 | corpus size, golden-set size, machine, timestamp and encoder in each header | `results/eval_report.md` |
 | FR-27 | the eval gate fails on a recall or refusal regression; the failure is demonstrated, not assumed | `results/ci_gate.md` |
 | FR-28 | clean clone: setup, ingest, eval, serve, in one documented sequence | `results/handover.md` |
+| FR-29 | dated questions answered from the revision in force; zero citations post-date the question | `results/temporal.md` |
+| FR-30 | a rule that only exists later is refused as `not_yet_in_effect` with its effective date | `results/temporal.md` |
 | NFR-05 | precision@5 (capped) reported beside recall@10 | `results/ablation.md` |
 | NFR-07 | 30 minutes at 10 users with zero unhandled exceptions | `results/soak.md` |
 | NFR-18 | every reported number produced offline by the hashed embedder, with no provider key | `results/eval_report.md` |

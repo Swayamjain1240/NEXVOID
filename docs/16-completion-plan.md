@@ -146,3 +146,41 @@ A reviewer should be able to tick every line:
 | Perf re-run moves a headline (e.g. p95) | Medium | Medium | report the delta, do not re-tune; a slower number on current code is still the true number |
 | Report sweep tempts a "quick improvement" | Low | High | M18–M20 are evidence phases: no retrieval, ranking or gate changes, no new tuning |
 | Screenshots drift again after capture | Low | Low | capture last, in M20, after all code phases are tagged |
+
+---
+
+## 9. M21 — the policy time machine (complete, `v1.5.0`)
+
+The project was complete at `v1.4`; this is the first feature added after the close-out, and it
+was scoped like every other milestone: one new capability, a frozen set written before the run,
+and a report that can fail.
+
+**The gap it closes.** Nothing in the system could represent "this rule took effect on this
+date", so a question about 2024 could be answered, with a citation, from a 2026 circular. That is
+the worst failure mode a policy assistant has: not a wrong answer, a *confidently dated* one.
+
+**Exit criteria (all met):**
+
+1. A chunk carries the window it was in force; a newer revision closes the previous one instead of
+   deleting it, and a back-dated ingest is an error ([ADR-0013](adr/0013-temporal-revisions.md)).
+2. `as_of` filters **inside** both retrievers, before fusion, so an out-of-force revision cannot
+   vote, occupy a candidate slot, or be reranked into an answer.
+3. A rule that only exists later is refused as `not_yet_in_effect` with its effective date.
+4. A dated golden set (`eval/golden_set_temporal.jsonl`, 12 questions) is scored by `make temporal`
+   into `results/temporal.md`, and the run **fails** on any citation that post-dates the question.
+5. The undated behaviour is unchanged: all pre-M21 reports still reproduce, and an old database
+   migrates in place.
+
+**Measured at `v1.5.0`:** version accuracy 9/9 (CI 0.701–1.000), not-yet accuracy 3/3, future-leak
+rate **0.0000** at retrieval and answer level; the control shows 4 of 9 dated questions would
+otherwise cite a revision that did not exist yet, and all 3 not-yet questions would have been
+answered. API contract 15/15, 159 tests, 31 files within the ceiling.
+
+**Non-goals, stated before the work:** no transaction-time axis (it answers what was in force
+*then*, not what it said then), no amendment history inside a revision, no write API for
+publishing a revision over HTTP - ingest stays a CLI operation (ADR-0012), which is also why a
+revision is a file on disk with a date, not a form.
+
+**What a reader should not conclude:** six authored revisions over three policies is a smoke test
+of the mechanism. It shows the filter is airtight and the refusal is honest; it says nothing about
+a real archive with undated amendments, gaps and contradictory circulars (`docs/17`, L17–L18).

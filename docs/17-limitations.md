@@ -40,6 +40,8 @@ anything from `results/`.
 | L14 | **No TLS and no proxy in the measured path.** | `scripts/repro_clone.py`, `bench/sweep.py` | production TLS termination is untested and would change the latency curve |
 | L15 | **Determinism is proven for the eval report only.** Two runs of `eval.run_eval` are byte-identical; latency and soak numbers are machine-dependent by nature. | `results/determinism.md` | reproducibility claims stop at the quality reports |
 | L16 | **CI runs lint, tests and the gates, not the long measurements.** The 30-minute soak, the load curve and the clean-clone handover are run deliberately, not on every push. | `.github/workflows/ci.yml`, `results/soak.md` header | a regression in sustained performance would be found late |
+| L17 | **The temporal evidence is a smoke test, not an archive study.** 9 dated questions over 3 policies whose 6 revisions were authored for the purpose: consistent by construction, effective dates known exactly. A real archive has undated amendments, gaps and contradictory circulars. | `results/temporal.md`, `corpus/temporal/` | a real policy archive with its own dated history, and questions written by someone who did not author the revisions |
+| L18 | **Temporal support is one-directional.** A revision can be superseded, but a correction inside a revision in force cannot be dated without publishing a new revision. There is no transaction-time axis either, so the system answers "what was in force then", never "what did we say then". | ADR-0013 | a bitemporal store (valid time + recorded time), which is a new data model rather than a column |
 
 ## How to read a number from this repository
 
