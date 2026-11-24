@@ -38,7 +38,7 @@ from eval.run_eval import CORPUS, RESULTS, provenance  # noqa: E402
 
 ANSWER_KEYS = {
     "query", "text", "refused", "confidence", "citations", "mode", "degraded",
-    "refusal_reason", "unseen", "trace_id", "timings",
+    "refusal_reason", "unseen", "as_of", "effective_from", "trace_id", "timings",
 }
 STAGES = {"retrieve_ms", "gate_ms", "extract_ms", "total_ms"}
 QUESTION = "What is the minimum attendance to stay enrolled?"
@@ -52,6 +52,14 @@ def _problems(answer_shape_payload: dict) -> list[str]:
     stages = set(answer_shape_payload.get("timings", {}))
     if not stages >= STAGES:
         problems.append(f"missing timings {sorted(STAGES - stages)}")
+    return problems
+
+
+def _as_of_problems(payload: dict) -> list[str]:
+    """FR-29: the date asked about is accepted and echoed, so a client can log what it asked."""
+    problems = _problems(payload)
+    if payload.get("as_of") != "2024-01-01":
+        problems.append(f"as_of not echoed: {payload.get('as_of')!r}")
     return problems
 
 
@@ -116,7 +124,13 @@ def main() -> int:
                 ("GET", "/v1/healthz", None, 200, None),
                 ("GET", "/health", None, 200, None),
                 ("GET", "/v1/ask?q=" + QUESTION.replace(" ", "%20"), None, 200, _problems),
+                ("GET", "/v1/ask?q=" + QUESTION.replace(" ", "%20") + "&as_of=2024-01-01",
+                 None, 200, _as_of_problems),
+                ("GET", "/v1/ask?q=" + QUESTION.replace(" ", "%20") + "&as_of=2024-13-01",
+                 None, 400, _error_problems),
                 ("POST", "/v1/ask", {"query": QUESTION}, 200, _problems),
+                ("POST", "/v1/ask", {"query": QUESTION, "as_of": "2024-01-01"}, 200,
+                 _as_of_problems),
                 ("POST", "/v1/ask", {"query": "attendance", "mode": "dense"}, 200, _problems),
                 ("POST", "/v1/ask", b"{not json", 400, _error_problems),
                 ("POST", "/v1/ask", {"query": "attendance", "tenant": "other"},
@@ -165,7 +179,7 @@ def main() -> int:
         f"corpus `{payload['provenance']['corpus']}`",
         "",
         "A fresh database is ingested from the corpus, the real server is started on an ephemeral",
-        "loopback port, and every documented route is called - including the four that are meant",
+        "loopback port, and every documented route is called - including the ones that are meant",
         "to fail. `?q=` is the only part of a path elided; row 3 carries the actual question.",
         "",
         "| # | method | path | expected | actual | shape | verdict |",

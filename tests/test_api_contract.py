@@ -24,7 +24,7 @@ from tests.conftest import MINI_CORPUS
 
 ANSWER_KEYS = {
     "query", "text", "refused", "confidence", "citations", "mode", "degraded",
-    "refusal_reason", "unseen", "trace_id", "timings",
+    "refusal_reason", "unseen", "as_of", "effective_from", "trace_id", "timings",
 }
 
 
@@ -104,6 +104,18 @@ def test_post_ask_rejects_a_missing_query(api):
 def test_post_ask_requires_the_bearer_token(api):
     status, payload = _call(f"{api}/v1/ask", method="POST", body={"query": "x"}, token=None)
     assert status == 401 and payload["error"]["code"] == "AUTH_REQUIRED"
+
+
+def test_as_of_is_echoed_and_a_bad_date_is_a_400(api):
+    """FR-29: the date is part of the request contract, and a malformed one is refused."""
+    status, payload = _call(f"{api}/v1/ask?q=attendance&as_of=2024-01-01")
+    assert status == 200 and payload["as_of"] == "2024-01-01"
+    bad_status, bad_payload = _call(f"{api}/v1/ask?q=attendance&as_of=2024-13-01")
+    assert bad_status == 400 and bad_payload["error"]["code"] == "INPUT_INVALID"
+    post_status, post_payload = _call(
+        f"{api}/v1/ask", method="POST", body={"query": "attendance", "as_of": "2024-01-01"}
+    )
+    assert post_status == 200 and post_payload["as_of"] == "2024-01-01"
 
 
 def test_health_is_an_alias_of_healthz(api):

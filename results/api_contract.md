@@ -1,9 +1,9 @@
 # The HTTP contract, probed against a live server (M18)
 
-Command: `python -m eval.api_contract` · commit `a42ace5` · corpus `corpus/campus (18 documents, frozen at M1)`
+Command: `python -m eval.api_contract` · commit `cb6f4d6` · corpus `corpus/campus (18 documents, frozen at M1)`
 
 A fresh database is ingested from the corpus, the real server is started on an ephemeral
-loopback port, and every documented route is called - including the four that are meant
+loopback port, and every documented route is called - including the ones that are meant
 to fail. `?q=` is the only part of a path elided; row 3 carries the actual question.
 
 | # | method | path | expected | actual | shape | verdict |
@@ -11,17 +11,20 @@ to fail. `?q=` is the only part of a path elided; row 3 carries the actual quest
 | 1 | GET | `/v1/healthz` | 200 | 200 | ok | PASS |
 | 2 | GET | `/health` | 200 | 200 | ok | PASS |
 | 3 | GET | `/v1/ask?q=...` | 200 | 200 | ok | PASS |
-| 4 | POST | `/v1/ask` | 200 | 200 | ok | PASS |
-| 5 | POST | `/v1/ask` | 200 | 200 | ok | PASS |
-| 6 | POST | `/v1/ask` | 400 | 400 | ok | PASS |
-| 7 | POST | `/v1/ask` | 400 | 400 | ok | PASS |
-| 8 | GET | `/v1/ask?q=...` | 400 | 400 | ok | PASS |
-| 9 | GET | `/v1/metrics` | 200 | 200 | ok | PASS |
-| 10 | POST | `/v1/documents` | 404 | 404 | ok | PASS |
-| 11 | PUT | `/v1/ask` | 405 | 405 | ok | PASS |
-| 12 | GET | `/v1/nope` | 404 | 404 | ok | PASS |
+| 4 | GET | `/v1/ask?q=...` | 200 | 200 | ok | PASS |
+| 5 | GET | `/v1/ask?q=...` | 400 | 400 | ok | PASS |
+| 6 | POST | `/v1/ask` | 200 | 200 | ok | PASS |
+| 7 | POST | `/v1/ask` | 200 | 200 | ok | PASS |
+| 8 | POST | `/v1/ask` | 200 | 200 | ok | PASS |
+| 9 | POST | `/v1/ask` | 400 | 400 | ok | PASS |
+| 10 | POST | `/v1/ask` | 400 | 400 | ok | PASS |
+| 11 | GET | `/v1/ask?q=...` | 400 | 400 | ok | PASS |
+| 12 | GET | `/v1/metrics` | 200 | 200 | ok | PASS |
+| 13 | POST | `/v1/documents` | 404 | 404 | ok | PASS |
+| 14 | PUT | `/v1/ask` | 405 | 405 | ok | PASS |
+| 15 | GET | `/v1/nope` | 404 | 404 | ok | PASS |
 
-Requests counted by `GET /v1/metrics` during the run: **12**.
+Requests counted by `GET /v1/metrics` during the run: **15**.
 Overall: **PASS**
 
 ## What the answer body must carry
@@ -29,7 +32,7 @@ Overall: **PASS**
 Eleven top-level fields, checked on both GET and POST:
 
 ```
-citations, confidence, degraded, mode, query, refusal_reason, refused, text, timings, trace_id, unseen
+as_of, citations, confidence, degraded, effective_from, mode, query, refusal_reason, refused, text, timings, trace_id, unseen
 ```
 
 and four stage timings (`retrieve_ms`, `gate_ms`, `extract_ms`, `total_ms`), which is the
