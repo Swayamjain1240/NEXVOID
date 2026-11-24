@@ -23,6 +23,7 @@ from __future__ import annotations
 import os
 from http.server import ThreadingHTTPServer
 
+from .admission import Admission
 from .config import SETTINGS, Settings
 from .handler import make_handler
 from .retrieval import HybridIndex
@@ -38,6 +39,12 @@ class ServerState:
         self.settings = settings
         self.store = Store(db_path, settings=settings)
         self.index = HybridIndex(self.store, settings=settings)
+        # M23: the bound that turns saturation into a fast 503 instead of a slow queue
+        self.admission = Admission(
+            limit=settings.max_inflight,
+            queue_limit=settings.max_waiting,
+            wait_ms=settings.admission_wait_ms,
+        )
 
 
 # The stdlib default listen backlog is 5, which drops a burst of connections outright.

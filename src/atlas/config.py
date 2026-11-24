@@ -106,6 +106,14 @@ class Settings:
     max_citations: int = 5
     citation_snippet_chars: int = 320
 
+    # M23 admission control (NFR-01). `max_inflight` is deliberately above the 10-user
+    # operating point so the measured target never queues: the bound exists to stop
+    # *overload* from becoming everyone's latency, not to throttle normal traffic.
+    # Beyond it, a request may wait `admission_wait_ms` and is then rejected as 503.
+    max_inflight: int = 32
+    max_waiting: int = 64
+    admission_wait_ms: float = 25.0
+
     # M22 ablation arm: `ATLAS_PERF_NAIVE=1` restores the pre-M22 code path (the gate
     # re-tokenises the winning passage, and the query is embedded twice) so
     # `bench/perf.py` can measure both arms in one run, on one machine, with identical

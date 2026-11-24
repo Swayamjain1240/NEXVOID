@@ -38,7 +38,7 @@ def make_handler(state) -> type:
             elif parsed.path in ("/health", "/v1/healthz"):
                 self._dispatch(f"GET {parsed.path}", self._health)
             elif parsed.path == "/v1/ask":
-                self._dispatch("GET /v1/ask", lambda: self._ask(parsed))
+                self._dispatch("GET /v1/ask", lambda: self._ask(parsed), shed=True)
             elif parsed.path == "/v1/metrics":
                 self._dispatch("GET /v1/metrics", self._metrics)
             else:
@@ -47,7 +47,7 @@ def make_handler(state) -> type:
         def do_POST(self) -> None:
             parsed = urlparse(self.path)
             if parsed.path == "/v1/ask":
-                self._dispatch("POST /v1/ask", self._ask_post)
+                self._dispatch("POST /v1/ask", self._ask_post, shed=True)
             else:
                 self._dispatch("POST other", lambda: self._error("NOT_FOUND", 404, _NO_ROUTE))
 
@@ -56,15 +56,26 @@ def make_handler(state) -> type:
 
         do_DELETE = do_PATCH = do_PUT  # one answer for every method the API does not offer
 
-        def _dispatch(self, route: str, handler) -> None:
-            """Time one request, catch what escapes, and record it exactly once."""
+        def _dispatch(self, route: str, handler, *, shed: bool = False) -> None:
+            """Time one request, catch what escapes, and record it exactly once.
+
+            M23: `shed=True` on the answer routes only. Liveness and metrics are never
+            refused - they are what an operator reaches for *during* an overload.
+            """
             self._started = time.perf_counter()
             self._status_sent = 500
+            admitted = state.admission.acquire() if shed else True
             try:
-                handler()
-            except Exception as error:  # FR-23: a code, never a traceback over the wire
-                self._error("SERVER_ERROR", 500, error.__class__.__name__)
+                if not admitted:
+                    self._overloaded()
+                else:
+                    try:
+                        handler()
+                    except Exception as error:  # FR-23: a code, never a traceback
+                        self._error("SERVER_ERROR", 500, error.__class__.__name__)
             finally:
+                if shed and admitted:
+                    state.admission.release()
                 METRICS.record(
                     route, self._status_sent, (time.perf_counter() - self._started) * 1000.0
                 )
@@ -124,7 +135,10 @@ def make_handler(state) -> type:
             return True
 
         def _metrics(self) -> None:
-            self._json(200, METRICS.snapshot())
+            payload = METRICS.snapshot()
+            # M23: capacity travels with the counters, so shedding is visible, not inferred
+            payload["admission"] = state.admission.snapshot()
+            self._json(200, payload)
 
         def _health(self) -> None:
             # theta and the encoder go out with liveness because the UI has to draw the
@@ -154,15 +168,25 @@ def make_handler(state) -> type:
                 "METHOD_NOT_ALLOWED", "only GET and POST are supported on this API"
             ))
 
+        def _overloaded(self) -> None:
+            """M23: the queue is full, so say so in a millisecond instead of in a second."""
+            self._json(
+                503,
+                api.error_payload("OVERLOADED", "server at capacity; retry shortly"),
+                headers={"Retry-After": "1"},
+            )
+
         def _error(self, code: str, status: int, message: str) -> None:
             self._json(status, api.error_payload(code, message))
 
-        def _json(self, status: int, payload: dict) -> None:
+        def _json(self, status: int, payload: dict, headers: dict | None = None) -> None:
             self._status_sent = status
             body = json.dumps(payload).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
+            for name, value in (headers or {}).items():
+                self.send_header(name, value)
             self.end_headers()
             self.wfile.write(body)
 
