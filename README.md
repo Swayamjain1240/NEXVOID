@@ -7,6 +7,8 @@ NEXVOID is a lightweight, multi-tenant Retrieval-Augmented Generation (RAG) serv
 
 Designed around minimal dependencies, tenant isolation, measurable performance, and reproducible evaluation, NEXVOID explores how reliable RAG systems can be engineered without unnecessary infrastructure complexity.
 
+A non-engineering summary for reviewers and hiring managers is in [`README-HR.md`](README-HR.md).
+
 ---
 
 ## Overview
