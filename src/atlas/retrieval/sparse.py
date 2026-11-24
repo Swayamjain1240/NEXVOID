@@ -29,8 +29,14 @@ class BM25Index:
         for term, postings in self._postings.items():
             self.idf[term] = math.log((n_docs + 1) / (len(postings) + 0.5))
 
-    def search(self, query_terms: list[str], *, k: int) -> list[tuple[int, float]]:
-        """Top-k (chunk_index, score), score desc, ties by ascending chunk index (FR-09, FR-12)."""
+    def search(
+        self, query_terms: list[str], *, k: int, allowed: frozenset[int] | None = None
+    ) -> list[tuple[int, float]]:
+        """Top-k (chunk_index, score), score desc, ties by ascending chunk index (FR-09, FR-12).
+
+        `allowed` (M21) restricts scoring to chunks in force on a date, so a superseded
+        revision cannot occupy a slot that a later filter would then have to remove.
+        """
         scores: dict[int, float] = {}
         for term, _qtf in _term_counts(query_terms).items():
             postings = self._postings.get(term)
@@ -39,6 +45,8 @@ class BM25Index:
             idf = self.idf[term]
             k1, b, avgdl = self._settings.bm25_k1, self._settings.bm25_b, self._avgdl
             for idx, tf in postings:
+                if allowed is not None and idx not in allowed:
+                    continue
                 denom = tf + k1 * (1 - b + b * self._doc_len[idx] / avgdl)
                 scores[idx] = scores.get(idx, 0.0) + idf * (tf * (k1 + 1)) / denom
         ranked = sorted(scores.items(), key=lambda item: (-item[1], item[0]))

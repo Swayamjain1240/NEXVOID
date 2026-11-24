@@ -36,11 +36,23 @@ def _parser() -> argparse.ArgumentParser:
     ingest = sub.add_parser("ingest", help="ingest markdown files")
     ingest.add_argument("path", type=Path, help="a markdown file or a directory of them")
     ingest.add_argument("--tenant", default=SETTINGS.default_tenant)
+    ingest.add_argument(
+        "--effective",
+        default=None,
+        help="date this revision takes effect (YYYY-MM-DD); a file named doc@YYYY-MM-DD.md "
+        "overrides it for that file (M21)",
+    )
     ask = sub.add_parser("ask", help="one cited answer, or a refusal at the gate")
     ask.add_argument("query")
     ask.add_argument("--tenant", default=SETTINGS.default_tenant)
     ask.add_argument("-k", type=int, default=5)
     ask.add_argument("--mode", default="hybrid", choices=("sparse", "dense", "hybrid"))
+    ask.add_argument(
+        "--as-of",
+        default="",
+        dest="as_of",
+        help="answer against the revisions in force on this date (YYYY-MM-DD, M21)",
+    )
     ask.add_argument("--raw", action="store_true", help="list retrieved passages instead")
     stats = sub.add_parser("stats", help="document and chunk counts")
     stats.add_argument("--tenant", default=SETTINGS.default_tenant)
@@ -57,9 +69,18 @@ def _ingest(args: argparse.Namespace) -> int:
         return 1
     store = Store(args.db)
     try:
-        written = sum(
-            store.upsert_document(tenant_id=args.tenant, path=path) for path in sources
-        )
+        written = 0
+        for path in sources:
+            # `attendance-policy@2025-01-01.md` is a revision of an existing document, not a
+            # new one: the filename carries the date so a corpus directory can hold its own
+            # history (M21). Anything without an `@` ingests the way it always did.
+            doc_id, effective = _revision_of(path)
+            written += store.upsert_document(
+                tenant_id=args.tenant,
+                path=path,
+                effective=effective or args.effective,
+                doc_id=doc_id,
+            )
     finally:
         store.close()
     print(f"ingested {written} new chunks from {len(sources)} files "
@@ -72,6 +93,12 @@ def _markdown_files(path: Path) -> list[Path]:
     return [item for item in files if item.is_file() and item.suffix in (".md", ".markdown")]
 
 
+def _revision_of(path: Path) -> tuple[str | None, str | None]:
+    """(doc_id, effective) from `name@YYYY-MM-DD.md`; (None, None) for an ordinary file."""
+    stem, _, stamp = path.stem.partition("@")
+    return (stem, stamp) if stamp else (None, None)
+
+
 def _ask(args: argparse.Namespace) -> int:
     store = Store(args.db)
     try:
@@ -79,13 +106,21 @@ def _ask(args: argparse.Namespace) -> int:
             _ask_raw(args, store)
             return 0
         answer = answer_query(
-            HybridIndex(store), args.query, tenant_id=args.tenant, mode=args.mode
+            HybridIndex(store),
+            args.query,
+            tenant_id=args.tenant,
+            mode=args.mode,
+            as_of=args.as_of,
         )
     finally:
         store.close()
     if answer.refused:
         print("REFUSED - no grounded answer; citations withheld "
-              f"(confidence={answer.confidence:.2f}, theta={SETTINGS.theta:.2f})")
+              f"(confidence={answer.confidence:.2f}, theta={SETTINGS.theta:.2f}, "
+              f"reason={answer.refusal_reason or 'unspecified'})")
+        if answer.effective_from:
+            print(f"this rule is not in force on {answer.as_of}; "
+                  f"the revision that answers it took effect {answer.effective_from}")
         return 0
     print(answer.text)
     for citation in answer.citations:

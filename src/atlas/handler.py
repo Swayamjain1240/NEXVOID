@@ -105,6 +105,8 @@ def make_handler(state) -> type:
                     tenant_id=tenant,
                     settings=state.settings,
                     mode=request["mode"],
+                    # M21: absent or "" means "as of now", so the old surface is unchanged
+                    as_of=request.get("as_of", ""),
                 )
             except InputError as error:
                 self._error("INPUT_INVALID", 400, str(error))

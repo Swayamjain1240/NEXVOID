@@ -1,12 +1,16 @@
-"""The answer path (FR-13..FR-19): gate on confidence, extract, cite, or refuse.
+"""The answer path (FR-13..FR-19, FR-29, FR-30): gate, extract, cite, or refuse.
 
-The MVP generator is deliberately extractive: every sentence in the answer is
-taken verbatim from the top passage, so "answer contains only sourced text"
-(FR-13) holds by construction, and citation accuracy is 1.0 because the only
-citation IS the passage the text came from (FR-14, FR-15). Refusal is a
-deliberate `Answer` with `refused=True` and no citations (FR-16), never an
-exception: an empty tenant is "no documents", which the gate refuses safely.
-FR-19: an empty or stopword-only query is an InputError (HTTP 400 upstream).
+The MVP generator is deliberately extractive: every sentence in the answer is taken
+verbatim from the top passage, so "answer contains only sourced text" (FR-13) holds by
+construction, and citation accuracy is 1.0 because the only citation IS the passage the
+text came from (FR-14, FR-15). Refusal is a deliberate `Answer` with `refused=True` and no
+citations (FR-16), never an exception: an empty tenant is "no documents", which the gate
+refuses safely. FR-19: an empty or stopword-only query is an InputError (HTTP 400 upstream).
+
+M21: `as_of` answers the question against the revisions in force on that date (FR-29). When
+nothing in force can answer it but a *later* revision can, the refusal says so and names the
+date that revision took effect (FR-30) - "not yet in effect" and "I don't know" are different
+facts, and a policy assistant that conflates them is the reason this feature exists.
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ from .retrieval import HybridIndex
 from .select import select
 from .support import novelty, refuses, unseen_terms
 from .text.tokenize import tokenize
+from .versions import effective_from, later_revision, parse_as_of
 
 # One breaker per process: generation is a shared dependency, not a per-request one.
 _GENERATOR_BREAKER = CircuitBreaker(threshold=SETTINGS.breaker_threshold)
@@ -35,12 +40,14 @@ def answer_query(
     tenant_id: str,
     settings: Settings = SETTINGS,
     mode: str = "hybrid",
+    as_of: str = "",
 ) -> Answer:
-    """One question in, one cited extractive answer or a refusal out (FR-13..FR-17)."""
+    """One question in, one cited extractive answer or a refusal out (FR-13..FR-17, FR-29)."""
     trace_id = uuid.uuid4().hex[:16]
     total_start = time.perf_counter()
     if not tokenize(query):
         raise InputError("empty or stopword-only query")  # FR-19, maps to 400
+    as_of = parse_as_of(as_of)  # a bad date is a 400, never a quiet reinterpretation
     verdict = scan(query)  # NFR-10: refuse injection-shaped input before retrieval
     if verdict.blocked:
         return Answer(
@@ -59,10 +66,11 @@ def answer_query(
                 "total_ms": _ms(time.perf_counter() - total_start),
             },
             trace_id=trace_id,
+            as_of=as_of,
         )
 
     retrieve_start = time.perf_counter()
-    report = index.diagnostics(query, tenant_id=tenant_id, mode=mode)
+    report = index.diagnostics(query, tenant_id=tenant_id, mode=mode, as_of=as_of)
     retrieve_ms = (time.perf_counter() - retrieve_start) * 1000.0
     gate_start = time.perf_counter()
 
@@ -77,10 +85,10 @@ def answer_query(
             refusal_reason = "low_confidence"
         else:
             # Second, independent signal (M14): confidence asks "does this passage match?",
-            # this asks "does the corpus contain these words at all?". Measured in
-            # results/support.md; the floor is 0.0 when the signal is disabled.
+            # this asks "does the corpus contain these words at all?". Scoped to the revisions
+            # in force (M21), so a word introduced in 2026 cannot make a 2024 answer look known.
             view = index.view(tenant_id)
-            vocabulary = view.vocabulary if view is not None else frozenset()
+            vocabulary = view.vocabulary_for(as_of) if view is not None else frozenset()
             unseen = unseen_terms(query, vocabulary)
             if refuses(
                 confidence=confidence,
@@ -94,6 +102,18 @@ def answer_query(
     else:
         passage, confidence, gate_passes = None, 0.0, False
         refusal_reason = "low_confidence"
+
+    not_yet = ""
+    if not gate_passes and as_of:
+        # FR-30: the evidence exists, it just did not exist *yet* on the date asked about. The
+        # check runs the same retrieval with no date filter and asks what would have won.
+        not_yet = later_revision(
+            index.diagnostics(query, tenant_id=tenant_id, mode=mode),
+            as_of=as_of,
+            theta=settings.theta,
+        )
+        if not_yet:
+            refusal_reason = "not_yet_in_effect"
     gate_ms = (time.perf_counter() - gate_start) * 1000.0
     timings = {
         "retrieve_ms": _ms(retrieve_ms),
@@ -102,7 +122,7 @@ def answer_query(
         "total_ms": _ms((time.perf_counter() - total_start) * 1000.0),
     }
     if not gate_passes:
-        return Answer(  # refusal is deliberate, never an exception (FR-16, FR-17)
+        return Answer(  # refusal is deliberate, never an exception (FR-16, FR-17, FR-30)
             query=query,
             text="",
             citations=(),
@@ -114,6 +134,8 @@ def answer_query(
             trace_id=trace_id,
             refusal_reason=refusal_reason,
             unseen=unseen,
+            as_of=as_of,
+            effective_from=effective_from(not_yet) if not_yet else "",
         )
 
     extract_start = time.perf_counter()
@@ -138,6 +160,8 @@ def answer_query(
             title=passage.title,
             section=passage.section,
             snippet=text[: settings.citation_snippet_chars],
+            valid_from=passage.valid_from,
+            valid_to=passage.valid_to,
         ),
     )
     return Answer(
@@ -150,6 +174,7 @@ def answer_query(
         degraded=degraded,
         timings_ms=timings,
         trace_id=trace_id,
+        as_of=as_of,
     )
 
 

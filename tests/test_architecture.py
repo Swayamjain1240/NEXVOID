@@ -36,6 +36,9 @@ RULES: dict[str, tuple[str, ...]] = {
     "atlas.support": ("atlas.answer", "atlas.handler", "atlas.server", "atlas.cli"),
     "atlas.select": ("atlas.handler", "atlas.server", "atlas.cli"),
     "atlas.phrase": ("atlas.answer", "atlas.handler", "atlas.server", "atlas.cli"),
+    # M21: window arithmetic is a leaf; it may not reach into storage or ranking
+    "atlas.versions": ("atlas.store", "atlas.retrieval", "atlas.answer", "atlas.handler",
+                       "atlas.server", "atlas.cli"),
     # payload shapes depend on the data types only
     "atlas.api": ("atlas.store", "atlas.retrieval", "atlas.answer", "atlas.handler",
                   "atlas.server"),

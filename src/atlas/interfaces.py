@@ -45,6 +45,10 @@ class Passage:
     text: str
     score: float
     rank: int
+    # M21: the window this passage was in force for. "" at both ends means the document
+    # carries no effective date, so it is in force at every date (see versions.in_force).
+    valid_from: str = ""
+    valid_to: str = ""
 
 
 @dataclass(frozen=True)
@@ -56,6 +60,8 @@ class Citation:
     title: str
     section: str
     snippet: str
+    valid_from: str = ""
+    valid_to: str = ""
 
 
 @dataclass(frozen=True)
@@ -73,9 +79,14 @@ class Answer:
     trace_id: str
     # Why a refusal happened, so a caller can tell "not close enough" from "the corpus never
     # mentions this" - two facts that deserve different words in a UI (M14, FR-16).
-    # "" when answered, else "low_confidence" or "unknown_terms".
+    # "" when answered, else "low_confidence", "unknown_terms", "blocked", or
+    # "not_yet_in_effect" (M21: the rule existed, but not on the date asked about).
     refusal_reason: str = ""
     unseen: tuple[str, ...] = ()
+    # M21: the date the question was asked against ("" = current), and - for a
+    # not_yet_in_effect refusal - the date the revision that answers it took effect.
+    as_of: str = ""
+    effective_from: str = ""
 
 
 @runtime_checkable
