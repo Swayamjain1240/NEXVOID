@@ -184,6 +184,15 @@ The project also includes a CI quality-gate failure demonstration and a clean-cl
 
 Six dated revisions of three policies make "what did this rule say in 2024" answerable. Without the date filter, four of nine dated questions are answered from a revision that did not exist yet, and every not-yet question is answered instead of refused. Full table: `results/temporal.md`.
 
+### Retrieval Path Optimisation (M22)
+
+| Retrieval path | mean | p95 | qps | `fold_plural` calls/query |
+|---|---:|---:|---:|---:|
+| before (`v1.5.0`) | 0.755 ms | 1.469 ms | 1,324 | 564 |
+| after (`v1.6.0`) | 0.342 ms | 0.797 ms | 2,924 | 138 |
+
+Both arms run in one process over the same corpus, alternating across three repeats (median reported), and the script fails unless they return identical text, citations, confidence and refusal decisions — so the **2.21×** cannot come from doing less work. Two changes account for it: the confidence gate reads the token sets the index already caches instead of re-tokenising the winning passage on every request, and the query is embedded once rather than twice. Full report: `results/perf-m22.md`.
+
 ---
 
 ## Evaluation Methodology

@@ -24,3 +24,5 @@ test or report that demonstrates them.
 | NFR-12 | layering rules checked against the real import graph | `tests/test_architecture.py` |
 | NFR-13 | every SRS id resolved to a test, report, ADR or a row in this file | `tests/test_traceability.py` |
 | NFR-15 | the eval command run twice: identical payloads, 0 differences | `results/determinism.md` |
+| NFR-14 | five retrieval sub-stages in every response, measured by the before/after benchmark | `results/perf-m22.md` |
+| NFR-01 | the retrieval path measured with its stages split, not as one number | `results/perf-m22.md` |

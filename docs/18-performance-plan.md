@@ -1,6 +1,7 @@
 # 18 — Performance plan (M22–M27)
 
-**Document ID:** ATL-PERF-002 · **Applies to:** post-`v1.5.0` · **Status:** proposed, not started
+**Document ID:** ATL-PERF-002 · **Applies to:** post-`v1.5.0` · **Status:** M22 complete at
+`v1.6.0`; M23–M27 proposed
 
 The project is complete and every claim is measured. This plan is about making the same system
 faster and more predictable **without weakening the evidence discipline**: each phase ends in a
@@ -49,6 +50,13 @@ quality experiment — ordered so that each phase's claim is provable before the
 
 **Expected:** 1.95× measured for the memo alone; 2.2–2.6× with the rest. **Exit criteria:** the
 report shows ≥2× on mean and p95, every frozen-set number identical to `v1.5.0`, determinism 0.
+
+**Measured at `v1.6.0` — done.** `results/perf-m22.md`: naive 0.755 ms → fast 0.342 ms mean
+(**2.21×**, p95 1.469 → 0.797 ms), `fold_plural` calls per query 564 → 138, with **identical**
+answers on all eight benchmark questions (the script exits non-zero if they ever differ).
+Recall@10 0.9167, refusal 1.0000, temporal 9/9 with 0 leaks, determinism 0 differences — all
+unchanged. Two new responses keys (`timings.retrieval`, and the contract probe that requires it)
+and one new abstraction (`Confidence`) came out of it; the ceiling test still passes at 35 files.
 
 **Risk:** a cache keyed on text can grow unbounded. Bound it to the view's chunk count (no global
 memo), so it dies with the tenant — not an LRU with a policy to tune.
