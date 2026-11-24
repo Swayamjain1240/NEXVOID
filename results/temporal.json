@@ -3,7 +3,7 @@
     "platform": "Windows-11-10.0.26300-SP0",
     "python": "3.12.10",
     "corpus": "corpus/campus + corpus/temporal (18 documents, 6 dated revisions)",
-    "commit": "c1fb380",
+    "commit": "5398f23",
     "regenerate_with": "python -m eval.temporal"
   },
   "summary": {

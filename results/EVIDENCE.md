@@ -26,3 +26,6 @@ test or report that demonstrates them.
 | NFR-15 | the eval command run twice: identical payloads, 0 differences | `results/determinism.md` |
 | NFR-14 | five retrieval sub-stages in every response, measured by the before/after benchmark | `results/perf-m22.md` |
 | NFR-01 | the retrieval path measured with its stages split, not as one number | `results/perf-m22.md` |
+| NFR-01 | 30 minutes at 10 unpaced users, p95 over served traffic plus the shed rate | `results/soak.md` |
+| NFR-01 | the load curve with shed counted apart from failures, at 1/10/50 users | `results/bench.md` |
+| FR-20 | `/v1/metrics` publishes the admission block: limit, queue, inflight, rejected | `results/api_contract.md` |

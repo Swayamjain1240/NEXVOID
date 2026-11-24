@@ -1,6 +1,6 @@
 # The HTTP contract, probed against a live server (M18)
 
-Command: `python -m eval.api_contract` · commit `c1fb380` · corpus `corpus/campus (18 documents, frozen at M1)`
+Command: `python -m eval.api_contract` · commit `5398f23` · corpus `corpus/campus (18 documents, frozen at M1)`
 
 A fresh database is ingested from the corpus, the real server is started on an ephemeral
 loopback port, and every documented route is called - including the ones that are meant

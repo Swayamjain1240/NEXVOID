@@ -203,10 +203,12 @@ def soak_line(ten: dict | None) -> list[str]:
     row = json.loads(path.read_text(encoding="utf-8")).get("row", {})
     if not row or row.get("users") != ten["users"]:
         return []
+    holds = row["p95_ms"] <= NFR01_P95_MS
     return [
-        f"The 30-minute soak holds this same load ({row['users']} users) and reads p95 "
-        f"{row['p95_ms']:.2f} ms, so the target is met in a burst and missed under sustained "
-        "saturation. Both are reported; `results/soak.md` is the stricter reading.",
+        f"The {row['duration_seconds'] / 60:.0f}-minute soak holds this same load "
+        f"({row['users']} users) and reads p95 {row['p95_ms']:.2f} ms, "
+        f"{'inside' if holds else 'over'} the {NFR01_P95_MS:.0f} ms target. It is the stricter "
+        "of the two readings because it cannot borrow credit from an idle moment.",
     ]
 
 
@@ -317,9 +319,14 @@ def notes_for_sweep(rows: list[dict]) -> list[str]:
     growth = (fifty["p95_ms"] / one["p95_ms"]) if one["p95_ms"] else 0.0
     return [
         f"- p95 grows {growth:.1f}x from 1 to 50 users ({one['p95_ms']:.1f} -> "
-        f"{fifty['p95_ms']:.1f} ms) while throughput reaches {fifty['rps']:.0f} rps, so the",
-        "  server is not saturated at 50; the cost is queueing on one process, which is the",
-        "  documented deployment shape rather than a defect.",
+        f"{fifty['p95_ms']:.1f} ms) while throughput reaches {fifty['rps']:.0f} rps.",
+        (
+            f"  At 50 the bound is reached and {fifty['shed']} requests are shed, so the tail "
+            "above it is the socket queue, not the answer path."
+            if fifty.get("shed")
+            else "  The server is not saturated at 50: the cost is queueing on one process, "
+            "which is the documented deployment shape rather than a defect."
+        ),
         f"- Failures at every level: {sum(row['failures'] for row in rows)}. A failure here is a",
         "  dropped connection, not a refused answer: refusals are HTTP 200 by design.",
         "- Two harness findings from getting this curve right, both measured: the stdlib listen",

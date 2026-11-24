@@ -3,45 +3,56 @@
     "platform": "Windows-11-10.0.26300-SP0",
     "python": "3.12.10",
     "corpus": "corpus/campus (18 documents, frozen at M1)",
-    "commit": "63b967f",
+    "commit": "5398f23",
     "regenerate_with": "python -m eval.run_eval"
   },
   "rows": [
     {
       "users": 1,
       "requests": 100,
+      "served": 100,
+      "shed": 0,
+      "shed_rate": 0.0,
       "failures": 0,
-      "wall_seconds": 0.83,
-      "p50_ms": 1.97,
-      "p95_ms": 4.384,
-      "p99_ms": 6.576,
-      "rps": 120.0
+      "wall_seconds": 0.88,
+      "p50_ms": 1.076,
+      "p95_ms": 2.125,
+      "p99_ms": 3.006,
+      "shed_p95_ms": 0.0,
+      "rps": 113.4
     },
     {
       "users": 10,
       "requests": 1000,
+      "served": 1000,
+      "shed": 0,
+      "shed_rate": 0.0,
       "failures": 0,
-      "wall_seconds": 2.98,
-      "p50_ms": 18.225,
-      "p95_ms": 43.252,
-      "p99_ms": 56.923,
-      "rps": 335.8
+      "wall_seconds": 2.04,
+      "p50_ms": 7.232,
+      "p95_ms": 18.19,
+      "p99_ms": 28.986,
+      "shed_p95_ms": 0.0,
+      "rps": 490.2
     },
     {
       "users": 50,
       "requests": 5000,
+      "served": 5000,
+      "shed": 0,
+      "shed_rate": 0.0,
       "failures": 0,
-      "wall_seconds": 13.94,
-      "p50_ms": 64.733,
-      "p95_ms": 233.94,
-      "p99_ms": 351.631,
-      "rps": 358.8
+      "wall_seconds": 9.18,
+      "p50_ms": 16.825,
+      "p95_ms": 66.236,
+      "p99_ms": 106.085,
+      "shed_p95_ms": 0.0,
+      "rps": 544.5
     }
   ],
   "notes": [
-    "- p95 grows 53.4x from 1 to 50 users (4.4 -> 233.9 ms) while throughput reaches 359 rps, so the",
-    "  server is not saturated at 50; the cost is queueing on one process, which is the",
-    "  documented deployment shape rather than a defect.",
+    "- p95 grows 31.2x from 1 to 50 users (2.1 -> 66.2 ms) while throughput reaches 544 rps.",
+    "  The server is not saturated at 50: the cost is queueing on one process, which is the documented deployment shape rather than a defect.",
     "- Failures at every level: 0. A failure here is a",
     "  dropped connection, not a refused answer: refusals are HTTP 200 by design.",
     "- Two harness findings from getting this curve right, both measured: the stdlib listen",
@@ -49,6 +60,7 @@
     "  every request into a captured pipe read p95 55.39 ms at 10 users (a FAIL) until the log",
     "  went to a file, as a deployed process writes it (46.52 ms, PASS). The logger is in the",
     "  tail path; that is a result about the service, not an excuse for the number.",
+    "- Shed at every level: 0 of 6100 requests, all of them 503 OVERLOADED from the M23 bound rather than dropped connections. The 10-user level is the NFR-01 operating point and sits below the bound, so the target is measured without shedding.",
     "- One process, one port, no container: this curve is the whole capacity story for the",
     "  deployment the project claims, and it says nothing about horizontal scaling."
   ]
