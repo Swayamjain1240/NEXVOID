@@ -1,0 +1,60 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, 34 chunks)",
+    "commit": "c1fb380",
+    "regenerate_with": "python -m bench.perf",
+    "iterations": 120,
+    "repeats": 3,
+    "queries": 8
+  },
+  "arms": {
+    "naive": {
+      "cold_build_ms": 31.24,
+      "mean_ms": 0.7552,
+      "p50_ms": 0.6733,
+      "p95_ms": 1.4686,
+      "qps": 1324.2,
+      "folds_per_query": 564.4,
+      "stage_ms": {
+        "embed_ms": 0.0664,
+        "bm25_ms": 0.0345,
+        "dense_ms": 0.0177,
+        "fuse_ms": 0.0137,
+        "rank_ms": 0.0023,
+        "cosine_ms": 0.0038,
+        "coverage_ms": 0.3419
+      },
+      "runs_mean_ms": [
+        0.7535,
+        0.7552,
+        1.2097
+      ]
+    },
+    "fast": {
+      "cold_build_ms": 31.2,
+      "mean_ms": 0.342,
+      "p50_ms": 0.2158,
+      "p95_ms": 0.7966,
+      "qps": 2924.0,
+      "folds_per_query": 137.8,
+      "stage_ms": {
+        "embed_ms": 0.0723,
+        "bm25_ms": 0.0305,
+        "dense_ms": 0.0162,
+        "fuse_ms": 0.012,
+        "rank_ms": 0.0019,
+        "cosine_ms": 0.0034,
+        "coverage_ms": 0.0199
+      },
+      "runs_mean_ms": [
+        0.342,
+        0.3337,
+        0.5334
+      ]
+    }
+  },
+  "speedup": 2.208,
+  "outputs_identical": true
+}

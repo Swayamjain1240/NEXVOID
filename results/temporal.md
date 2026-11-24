@@ -1,6 +1,6 @@
 # Temporal correctness: does the answer respect the date asked about? (M21)
 
-Command: `python -m eval.temporal` · commit `cb6f4d6` · corpus `corpus/campus` + `corpus/temporal` (18 documents, 6 dated revisions)
+Command: `python -m eval.temporal` · commit `c1fb380` · corpus `corpus/campus` + `corpus/temporal` (18 documents, 6 dated revisions)
 Platform: Windows-11-10.0.26300-SP0 · Python 3.12.10 · encoder `hashed-tfidf-d1024`
 
 ## Summary
