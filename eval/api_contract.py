@@ -76,11 +76,19 @@ def _error_problems(payload: dict) -> list[str]:
 
 def _metrics_problems(payload: dict) -> list[str]:
     problems = []
-    for key in ("uptime_s", "requests", "errors", "routes"):
+    for key in ("uptime_s", "requests", "errors", "routes", "admission"):
         if key not in payload:
             problems.append(f"missing {key}")
     if not isinstance(payload.get("routes"), dict):
         problems.append("routes is not an object")
+    # M23: capacity is part of the contract, so a shed request is explainable after the fact
+    admission = payload.get("admission")
+    if not isinstance(admission, dict):
+        problems.append("admission is not an object")
+    else:
+        missing = {"limit", "queue_limit", "wait_ms", "inflight", "waiting", "rejected"}
+        if not set(admission) >= missing:
+            problems.append(f"admission missing {sorted(missing - set(admission))}")
     return problems
 
 
