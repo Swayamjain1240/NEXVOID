@@ -6,8 +6,12 @@ exceeds what the bound can serve, then reports how much was shed and how fast th
 back — the two numbers a capacity bound exists to make predictable.
 
 The configuration **is** the experiment and is printed in the report: 4 slots, 8 waiters,
-25 ms of waiting, 40 ms of injected latency. The shipped defaults (32 / 64 / 25 ms, no
+25 ms of waiting, 40 ms of padding per answer. The shipped defaults (32 / 64 / 25 ms, no
 padding) shed nothing at the measured loads, which is precisely why this needs its own knobs.
+
+The padding is applied here, not in the server: `pad_answers` wraps the answer function in
+this process only, so the 503 path is untouched and `src/` has no latency knob that could be
+left switched on in a deployment.
 
 Run: python -m bench.overload
 """
@@ -28,6 +32,7 @@ _SRC = Path(__file__).resolve().parents[1] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
+from atlas import handler as handler_module  # noqa: E402
 from atlas.config import SETTINGS  # noqa: E402
 from atlas.server import ServerState, make_server  # noqa: E402
 from bench.sweep import build_database, run_load  # noqa: E402
@@ -35,7 +40,7 @@ from eval.run_eval import RESULTS, load_questions, provenance  # noqa: E402
 
 USERS = 50
 PER_USER = 40
-SLOTS, WAITERS, WAIT_MS, SLOW_MS = 4, 8, 25.0, 40.0
+SLOTS, WAITERS, WAIT_MS, PAD_MS = 4, 8, 25.0, 40.0
 
 
 def _get(port: int, path: str) -> tuple[int, dict, dict, float]:
@@ -50,6 +55,23 @@ def _get(port: int, path: str) -> tuple[int, dict, dict, float]:
         return response.status, json.loads(body), headers, elapsed
     finally:
         connection.close()
+
+
+def pad_answers(ms: float):
+    """Make every *answered* request slow, from the harness side only (M23).
+
+    The 503 decision happens in the dispatcher before the answer function is reached, so a
+    refused request still costs what a refusal costs. Returns the original so the caller can
+    put it back; nothing outside this process is affected.
+    """
+    original = handler_module.answer_query
+
+    def padded(*args, **kwargs):
+        time.sleep(ms / 1000.0)
+        return original(*args, **kwargs)
+
+    handler_module.answer_query = padded
+    return original
 
 
 def boot(db: Path, settings) -> tuple[object, int, ServerState]:
@@ -87,8 +109,9 @@ def render(row: dict, probe: dict, admission: dict, payload: dict) -> list[str]:
         f"platform: {payload['provenance']['platform']}",
         "",
         f"Configuration: **{SLOTS} slots**, {WAITERS} waiters, {WAIT_MS:.0f} ms of waiting, "
-        f"{SLOW_MS:.0f} ms injected per answered request, {USERS} client processes offering "
-        f"{PER_USER} requests each. The bound is set below the offered load on purpose.",
+        f"{PAD_MS:.0f} ms of padding per answered request, {USERS} client processes offering "
+        f"{PER_USER} requests each. The bound is set below the offered load on purpose, and the "
+        "padding is applied by this harness around the answer function, not by the server.",
         "",
         "| metric | value |",
         "|---|---|",
@@ -118,9 +141,9 @@ def render(row: dict, probe: dict, admission: dict, payload: dict) -> list[str]:
         f"{row['shed_p95_ms']:.2f} ms rather than ~1 ms, against served p95 "
         f"{row['p95_ms']:.2f} ms. `ATLAS_ADMISSION_WAIT_MS=0` refuses without waiting, and "
         "`tests/test_admission.py` covers that path.",
-        f"- The served p95 ({row['p95_ms']:.2f} ms) is above the injected {SLOW_MS:.0f} ms "
-        f"because an admitted request may also wait up to {WAIT_MS:.0f} ms for a slot. That "
-        "wait is bounded, which is the difference between a queue and a bound.",
+        f"- The served p95 ({row['p95_ms']:.2f} ms) is above the harness's {PAD_MS:.0f} ms "
+        f"padding because an admitted request may also wait up to {WAIT_MS:.0f} ms for a "
+        "slot. That wait is bounded, which is the difference between a queue and a bound.",
         f"- The {row['shed_rate'] * 100:.1f}% shed rate is **configured**, not a production "
         "result: the shipped bound is 32 slots and shed nothing at the measured loads. "
         "`docs/18` M23 set the abandon condition at ~2% shedding to hold the target; this run "
@@ -142,12 +165,12 @@ def main() -> int:
         max_inflight=SLOTS,
         max_waiting=WAITERS,
         admission_wait_ms=WAIT_MS,
-        slow_ms=SLOW_MS,
     )
     answerable, _ = load_questions()
     questions = [row["query"] for row in answerable]
     db = Path(tempfile.mkdtemp()) / "overload.db"
     build_database(db)
+    restore = pad_answers(PAD_MS)
     server, port, state = boot(db, settings)
     base_url = f"http://127.0.0.1:{port}"
     try:
@@ -159,6 +182,7 @@ def main() -> int:
         server.shutdown()
         server.server_close()
         state.store.close()
+        handler_module.answer_query = restore
 
     row["users"] = USERS
     payload = {
@@ -170,7 +194,8 @@ def main() -> int:
             "max_inflight": SLOTS,
             "max_waiting": WAITERS,
             "admission_wait_ms": WAIT_MS,
-            "slow_ms": SLOW_MS,
+            "pad_ms": PAD_MS,
+            "pad_applied_by": "bench/overload.py (harness process only)",
             "users": USERS,
             "per_user": PER_USER,
         },

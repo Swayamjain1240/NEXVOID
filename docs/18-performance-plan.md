@@ -72,8 +72,9 @@ micro-optimisation fixes that — a bound does.
 - A bounded work queue with a fixed worker count and a request deadline; when the queue is full or
   the deadline is missed, answer `503 OVERLOADED` (a new documented error code) immediately.
 - Expose `queue_depth`, `rejected`, `inflight` and `shed` in `/v1/metrics`.
-- Re-run the 30-minute soak at 10 unpaced users, and add a deliberate overload run (50 users) where
-  the system is *expected* to shed.
+- Re-run the 30-minute soak at 10 unpaced users, and add a deliberate overload run where the
+  system is *expected* to shed (delivered at `v1.8.0` with the bound lowered to 4 slots — see the
+  measured section below for why 50 users at the shipped bound was not enough).
 
 **Expected:** p95 ≤ 50 ms at 10 users, with a non-zero reject rate reported rather than hidden.
 **Exit criteria:** `results/soak.md` regenerated; the report states the operating point, the reject
@@ -84,10 +85,20 @@ in `/v1/metrics`), but the soak stopped failing for a reason the plan did not pr
 service time by 2.21×, which moved the 10-user operating point from p95 58.40 ms to **22.88 ms**
 *before* the bound ever bound: with ~2 ms requests, ten clients keep about one request in flight,
 far below `max_inflight=32`. The admission bound is a ceiling on the failure mode, not the source
-of the improvement, and the reports say which is which. The 50-user level, which does reach the
-bound under burst, is where shedding appears. **What would make us abandon it:** if shedding more than ~2% of
-requests is needed to hold the target, the honest answer is that the target belongs at a lower
-concurrency, and NFR-01 gets re-scoped instead of gamed.
+of the improvement, and the reports say which is which.
+
+The 50-user level this plan named does not reach the bound either. `results/bench.md` offers 5,000
+requests there and sheds **0**: 50 clients at ~2 ms of service still occupy only a handful of the
+32 slots. Shedding appears only when the bound is set below the offered load, which is what
+`results/overload.md` (`v1.8.0`) does — 4 slots, 8 waiters, 40 ms of padding per answer, 50 client
+processes — shedding **83.95%** (1,679 of 2,000) with served p95 79.05 ms and `/v1/healthz` still
+answering 200 (15.9 ms) while every answer was refused. That demonstrates the mechanism at a
+*configured* bound; it does not exercise the shipped 32, which is L3's wording and the reason the
+plan's "50 users will shed" assumption is corrected here rather than left standing.
+
+**What would make us abandon it:** if shedding more than ~2% of requests is needed to hold the
+target, the honest answer is that the target belongs at a lower concurrency, and NFR-01 gets
+re-scoped instead of gamed.
 
 ## M24 — Use the cores
 

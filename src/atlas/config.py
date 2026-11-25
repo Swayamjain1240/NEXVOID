@@ -133,10 +133,10 @@ class Settings:
         default_factory=lambda: _env_number("ATLAS_ADMISSION_WAIT_MS", 25.0, float)
     )
 
-    # Benchmark-only fault injection (M23): pad every *answered* request so the admission bound
-    # is reachable on one laptop, where ~2 ms answers never queue. The 503 path skips it, which
-    # is the point - a shed request must not pay the cost of the work it was refused.
-    slow_ms: float = field(default_factory=lambda: _env_number("ATLAS_SLOW_MS", 0.0, float))
+    # There is deliberately no latency knob here. The overload run needs answered requests to be
+    # slow so the bound is reachable on one laptop, and it gets that by wrapping the answer
+    # function inside `bench/overload.py` - a harness concern, not a setting the shipped server
+    # could be left with. Nothing under `src/` knows the run exists.
 
     # M22 ablation arm: `ATLAS_PERF_NAIVE=1` restores the pre-M22 code path (the gate
     # re-tokenises the winning passage, and the query is embedded twice) so

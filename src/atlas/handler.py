@@ -109,10 +109,6 @@ def make_handler(state) -> type:
 
         def _answer(self, request: dict) -> None:
             tenant = self.headers.get("X-Tenant", state.settings.default_tenant)
-            if state.settings.slow_ms:
-                # M23 benchmark hook (ATLAS_SLOW_MS): pad the answer path only, so an overload
-                # run can hold the bound. Never set in production, and never on the 503 path.
-                time.sleep(state.settings.slow_ms / 1000.0)
             try:
                 answer = answer_query(
                     state.index,
