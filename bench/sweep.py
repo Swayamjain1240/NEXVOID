@@ -218,13 +218,17 @@ def soak_line(ten: dict | None) -> list[str]:
     ]
 
 
-def write_bench(rows: list[dict], payload: dict) -> None:
+def write_bench(rows: list[dict], payload: dict, *, stem: str = "bench", label: str = "") -> None:
+    """`stem` lets a one-off run keep its own report instead of replacing the canonical curve."""
     RESULTS.mkdir(exist_ok=True)
-    (RESULTS / "bench.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    (RESULTS / f"{stem}.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
     ten = next((row for row in rows if row["users"] == NFR01_USERS), None)
     verdict = "PASS" if ten and ten["p95_ms"] <= NFR01_P95_MS else "FAIL"
+    title = "# Load curve — 1, 10 and 50 concurrent users (M10)"
+    if label:
+        title += f" — {label}"
     lines = [
-        "# Load curve — 1, 10 and 50 concurrent users (M10)",
+        title,
         "",
         f"Command: `python -m bench.sweep` · commit `{payload['provenance']['commit']}` · "
         f"platform: {payload['provenance']['platform']}",
@@ -249,14 +253,15 @@ def write_bench(rows: list[dict], payload: dict) -> None:
         "per user with a persistent keep-alive connection, 100 requests per user per level.",
         "The curve is the point: a single number cannot show where the knee is.",
         "",
-        *soak_line(ten),
+        # a labelled one-off run must not borrow the canonical soak's number
+        *([] if stem != "bench" else soak_line(ten)),
         "",
         "## Interpretation",
         "",
         *payload["notes"],
         "",
     ]
-    (RESULTS / "bench.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (RESULTS / f"{stem}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def write_soak(row: dict, payload: dict) -> None:
@@ -434,6 +439,12 @@ def main() -> int:
         action="store_true",
         help="rewrite bench.md/soak.md from the committed json, without running load",
     )
+    parser.add_argument(
+        "--out",
+        default="bench",
+        help="report stem for this run (default bench; use another name to keep the curve)",
+    )
+    parser.add_argument("--label", default="", help="one-line qualifier for the report title")
     args = parser.parse_args()
 
     if args.render_existing:
@@ -510,8 +521,8 @@ def main() -> int:
     ):
         rows = sweep(questions, db, levels=levels, per_user=args.requests, token=args.token)
     payload = {"provenance": provenance(), "rows": rows, "notes": notes_for_sweep(rows)}
-    write_bench(rows, payload)
-    print("written: results/bench.md, results/bench.json")
+    write_bench(rows, payload, stem=args.out, label=args.label)
+    print(f"written: results/{args.out}.md, results/{args.out}.json")
     return 0
 
 

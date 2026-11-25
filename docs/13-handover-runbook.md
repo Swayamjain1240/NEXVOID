@@ -55,7 +55,7 @@ repository is not reproducible, this receipt is the answer.
 | deliberate overload: 84.0% shed at 4 slots, served p95 79.05 ms, liveness 200 throughout | `results/overload.md` |
 | worker processes: 1/2/4 behind one port, p95 24.96 → 5.10 ms, 378 → 587 rps | `results/workers.md` |
 | exact cache: 90.0% hits on a repeat mix, 1.64 ms vs 2.39 ms, tenant and date probes | `results/cache.md` |
-| incremental growth: 34 / 1k / 10k chunks, cold start 66.7 ms → 13.9 s, append 27× cheaper than rebuild | `results/scale.md` |
+| incremental growth: 34 / 1k / 10k chunks, cold start 36.5 ms → 10.9 s, append 25× cheaper than rebuild | `results/scale.md` |
 | Determinism: the eval command run twice, 0 differences (NFR-15) | `results/determinism.md` |
 
 ### Capacity knobs (M23/M24)

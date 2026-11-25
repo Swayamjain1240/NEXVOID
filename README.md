@@ -246,11 +246,11 @@ An ingest no longer drops the tenant view. New chunks are appended — BM25 post
 
 | chunks | cold start | warm query p50 | rebuild | append 5 documents |
 |---|---:|---:|---:|---:|
-| 34 | 66.7 ms | 0.11 ms | 67.0 ms | 27.1 ms |
-| 1,053 | 1,761 ms | 3.93 ms | 1,755 ms | 43.8 ms |
-| 10,053 | 13,912 ms | 33.11 ms | 14,770 ms | 545 ms |
+| 34 | 36.5 ms | 0.06 ms | 35.6 ms | 15.5 ms |
+| 1,053 | 1,439 ms | 2.82 ms | 1,357 ms | 43.6 ms |
+| 10,053 | 10,907 ms | 27.49 ms | 11,228 ms | 453 ms |
 
-At 10k chunks an append costs **545 ms against a 14,770 ms rebuild (27×)**, and a warm query 33.11 ms — linear in the corpus, which is the arithmetic an ANN index would have to beat and does not at these NFRs. Cold start is the expensive number and is paid once per process. The 1k and 10k levels are generated text: a cost measurement, not a quality claim. Full report: `results/scale.md`.
+At 10k chunks an append costs **453 ms against an 11,228 ms rebuild (25×)**, and a warm query 27.49 ms — close to linear in the corpus, which is the arithmetic an ANN index would have to beat and does not at these NFRs. Cold start is the expensive number and is paid once per process. The 1k and 10k levels are generated text: a cost measurement, not a quality claim. Full report: `results/scale.md`.
 
 ---
 

@@ -186,8 +186,8 @@ separately from the query cost. **Explicit non-goal:** no ANN, no quantisation, 
 unless the 10k-chunk curve says the exact scan is the bottleneck.
 
 **Measured at `v1.10.0` — done, append-only.** `results/scale.md` at 34 / 1,053 / 10,053 chunks:
-cold start 66.7 → 1,761 → **13,912 ms**, warm query p50 0.11 → 3.93 → **33.11 ms**, and an ingest
-into a warm view **545 ms at 10k chunks against a 14,770 ms rebuild (27.1×)**. The append is O(new
+cold start 36.5 → 1,439 → **10,907 ms**, warm query p50 0.06 → 2.82 → **27.49 ms**, and an ingest
+into a warm view **453 ms at 10k chunks against an 11,228 ms rebuild (24.8×)**. The append is O(new
 chunks) plus BM25's idf sweep over the vocabulary; the rebuild it replaces is O(corpus). WAL is on,
 so the ingest runs while the process serves, and `ATLAS_RELOAD_MS` (default 1000) is how often a
 serving process notices — one cheap signature query per interval per tenant, not per request.
@@ -197,9 +197,10 @@ also its limit: hashed TF-IDF bakes corpus idf into each row, so the old rows ke
 were built with. `tests/test_incremental.py` shows the ranking unchanged on the mini corpus, and
 that is one equivalence check, not a proof. And a revised document, a closed revision window or a
 deletion still rebuilds, because none of those can be patched into a posting list — the report
-measures the case M26 actually changes. **On ANN:** query p50 grows 301× for 296× the chunks, so
-the exact scan is linear as predicted; at 33 ms at 10k chunks it is not the bottleneck this
-project's NFRs name, so the non-goal stands and no vector index was added.
+measures the case M26 actually changes. **On ANN:** query p50 runs 0.06 → 2.82 → 27.49 ms across
+296× the chunks — the 34-chunk reading is at timer resolution, and between the two larger levels
+the growth is close to linear, as an exact scan must be. At 27 ms at 10k chunks it is not the
+bottleneck this project's NFRs name, so the non-goal stands and no vector index was added.
 
 ## M27 — The quality experiment: query expansion for FR-17
 

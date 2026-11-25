@@ -1,0 +1,68 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, frozen at M1)",
+    "commit": "03eccbf",
+    "regenerate_with": "python -m eval.run_eval"
+  },
+  "rows": [
+    {
+      "users": 1,
+      "requests": 100,
+      "served": 100,
+      "shed": 0,
+      "shed_rate": 0.0,
+      "failures": 0,
+      "wall_seconds": 0.79,
+      "p50_ms": 1.078,
+      "p95_ms": 2.03,
+      "p99_ms": 3.892,
+      "shed_p95_ms": 0.0,
+      "rps": 126.6
+    },
+    {
+      "users": 10,
+      "requests": 1000,
+      "served": 1000,
+      "shed": 0,
+      "shed_rate": 0.0,
+      "failures": 0,
+      "wall_seconds": 1.85,
+      "p50_ms": 7.18,
+      "p95_ms": 19.086,
+      "p99_ms": 27.176,
+      "shed_p95_ms": 0.0,
+      "rps": 540.0
+    },
+    {
+      "users": 50,
+      "requests": 5000,
+      "served": 4963,
+      "shed": 37,
+      "shed_rate": 0.0074,
+      "failures": 0,
+      "wall_seconds": 8.24,
+      "p50_ms": 21.35,
+      "p95_ms": 69.372,
+      "p99_ms": 101.887,
+      "shed_p95_ms": 82.87,
+      "rps": 602.7
+    }
+  ],
+  "notes": [
+    "- p95 grows 34.2x from 1 to 50 users (2.0 -> 69.4 ms) while throughput reaches 603 rps.",
+    "  At 50 the bound is reached and 37 requests are shed, so the tail above it is the socket queue, not the answer path.",
+    "- Failures at every level: 0. A failure here is a",
+    "  dropped connection, not a refused answer: refusals are HTTP 200 by design.",
+    "- Two harness findings from getting this curve right, both measured: the stdlib listen",
+    "  backlog of 5 dropped 7 connections at 50 users until it was raised to 128, and logging",
+    "  every request into a captured pipe read p95 55.39 ms at 10 users (a FAIL) until the log",
+    "  went to a file, as a deployed process writes it (46.52 ms, PASS). The logger is in the",
+    "  tail path; that is a result about the service, not an excuse for the number.",
+    "- Shed at every level: 37 of 6100 requests, all of them 503 OVERLOADED from the M23 bound rather than dropped connections. The 10-user level is the NFR-01 operating point and sits below the bound, so the target is measured without shedding.",
+    "- The answer cache is off here (`ATLAS_CACHE_SIZE=0`): 100 requests per user over 24 questions would otherwise be a cache benchmark, not a retrieval one. `results/cache.md` measures the cache, with its own repeat mix.",
+    "- One process, one port, no container: this curve is the whole capacity story for the",
+    "  deployment the project claims, and it says nothing about horizontal scaling."
+  ]
+}

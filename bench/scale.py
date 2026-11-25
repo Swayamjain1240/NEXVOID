@@ -75,25 +75,26 @@ def timed_search(index: HybridIndex, query: str) -> float:
 def measure(target: int, folder: Path) -> dict:
     """One corpus size: ingest, cold start, warm queries, rebuild, and one incremental ingest."""
     db = folder / f"scale-{target}.db"
+    if target == LEVELS[0]:
+        started = time.perf_counter()
+        build_database(db)  # the real corpus, through the same ingest path
+        ingest_s = time.perf_counter() - started
+    else:
+        started = time.perf_counter()
+        documents = 0
+        writer = Store(db)
+        try:
+            while writer.stats(tenant_id=TENANT)["chunks"] < target:
+                batch = 1 if documents == 0 else 50
+                grow(writer, folder, documents, batch)
+                documents += batch
+        finally:
+            writer.close()
+        ingest_s = time.perf_counter() - started
     store = Store(db)
     try:
-        if target == LEVELS[0]:
-            started = time.perf_counter()
-            build_database(db)  # the real corpus, through the same ingest path
-            store.close()
-            store = Store(db)
-            ingest_s = time.perf_counter() - started
-            documents = store.stats(tenant_id=TENANT)["documents"]
-        else:
-            started = time.perf_counter()
-            documents, _ = grow(store, folder, 0, 1)
-            while store.stats(tenant_id=TENANT)["chunks"] < target:
-                added, _ = grow(store, folder, documents, 50)
-                documents += 50
-                if added == 0:  # pragma: no cover - a generator that produced nothing
-                    break
-            ingest_s = time.perf_counter() - started
-        chunks = store.stats(tenant_id=TENANT)["chunks"]
+        counts = store.stats(tenant_id=TENANT)
+        documents, chunks = counts["documents"], counts["chunks"]
 
         index = HybridIndex(store)
         cold_ms = timed_search(index, QUERIES[0])
@@ -129,6 +130,8 @@ def measure(target: int, folder: Path) -> dict:
 
 def render(rows: list[dict], payload: dict) -> list[str]:
     first, last = rows[0], rows[-1]
+    grown = sorted({row["grow_chunks"] for row in rows})
+    grown_range = str(grown[0]) if len(grown) == 1 else f"{grown[0]}-{grown[-1]}"
     lines = [
         "# Cold start, query cost and ingest cost at 34 / 1k / 10k chunks (M26, NFR-03)",
         "",
@@ -157,17 +160,18 @@ def render(rows: list[dict], payload: dict) -> list[str]:
         "- **rebuild ms** — `invalidate()` then the next query, i.e. what an ingest used to cost "
         "when the only way to see a new document was to drop the view.",
         "- **incremental ingest ms** — appending "
-        f"{GROW_DOCS} documents ({first['grow_chunks']}–{last['grow_chunks']} chunks) to a built "
-        "view via `refresh()`, which extends instead of rebuilding.",
+        f"{GROW_DOCS} documents ({grown_range} chunks) to a built view via `refresh()`, "
+        "which extends instead of rebuilding.",
         "",
         "## Interpretation",
         "",
-        f"- Query cost grows roughly with the corpus, as an exact scan must: p50 "
+        f"- Query cost grows with the corpus, as an exact scan must: p50 "
         f"{first['warm_p50']:.2f} → {last['warm_p50']:.2f} ms from {first['chunks']} to "
-        f"{last['chunks']} chunks ({last['warm_p50'] / first['warm_p50']:.1f}x for "
-        f"{last['chunks'] / first['chunks']:.0f}x the chunks). That is the arithmetic an ANN "
-        "index would have to beat, and at these numbers it does not earn its complexity — "
-        "`docs/18` M26 keeps ANN out until a curve like this one says otherwise.",
+        f"{last['chunks']} chunks. The 34-chunk figure sits at the edge of timer resolution, "
+        "so read the growth between the two larger levels, where it is close to linear. That "
+        "is the arithmetic an ANN index would have to beat, and at these numbers it does not "
+        "earn its complexity — `docs/18` M26 keeps ANN out until a curve like this one says "
+        "otherwise.",
         f"- Cold start is the expensive one: {last['cold_ms']:.0f} ms at {last['chunks']} "
         "chunks, paid once per process per tenant. It is linear in chunks because every chunk "
         "is tokenised twice (BM25 and the vector projector) and embedded once.",
