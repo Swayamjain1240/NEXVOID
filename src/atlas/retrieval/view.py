@@ -16,6 +16,7 @@ from ..store import StoredChunk
 from ..text.tokenize import bigrams, tokenize
 from .confidence import Confidence
 from .embedder import build_embedder
+from .fingerprint import corpus_fingerprint
 from .fuse import rrf
 from .learned import build_reranker
 from .passages import to_passages
@@ -34,6 +35,7 @@ class TenantView:
         self._settings = settings
         texts = [chunk.text for chunk in chunks]
         self._chunks = list(chunks)
+        self.corpus_hash = corpus_fingerprint(self._chunks)  # M25: the cache key's corpus part
         self._index_of = {chunk.chunk_id: idx for idx, chunk in enumerate(self._chunks)}
         self._sparse = BM25Index(texts, settings=settings)
         self._embedder = build_embedder(settings.embedder_kind, self._sparse.idf, settings=settings)

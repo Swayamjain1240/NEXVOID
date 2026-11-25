@@ -31,6 +31,7 @@
     "- Error rate 0.000% over 84925 requests; these are",
     "  dropped connections, and none of them changed an answer's content.",
     "- The per-tenant view is the only thing that grows with traffic, and it is keyed by",
-    "  tenant, so this run also checks that repeated requests do not accumulate per request."
+    "  tenant, so this run also checks that repeated requests do not accumulate per request.",
+    "- The answer cache is off here (`ATLAS_CACHE_SIZE=0`), so this is the sustained cost of answering every request rather than the cost of repeating one; `results/cache.md` is where a warm cache is measured."
   ]
 }

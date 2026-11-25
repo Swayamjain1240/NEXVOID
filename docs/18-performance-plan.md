@@ -1,7 +1,8 @@
 # 18 — Performance plan (M22–M27)
 
 **Document ID:** ATL-PERF-002 · **Applies to:** post-`v1.5.0` · **Status:** M22 complete at
-`v1.6.0`, M23 complete at `v1.7.0`, M24 complete at `v1.8.0`; M25–M27 proposed
+`v1.6.0`, M23 complete at `v1.7.0`, M24 complete at `v1.8.0`, M25 complete at `v1.9.0`;
+M26–M27 proposed
 
 The project is complete and every claim is measured. This plan is about making the same system
 faster and more predictable **without weakening the evidence discipline**: each phase ends in a
@@ -146,6 +147,24 @@ available and the most dangerous one here.
 **Exit criteria:** `results/cache.md` with hit rate, latency by cache state, and the leak probe.
 **Abandon condition:** if the measured hit rate on the frozen sets is near zero, say so and keep the
 exact cache only — an unused cache is complexity with no evidence behind it.
+
+**Measured at `v1.9.0` — done, exact cache only.** `results/cache.md`: 216 of 240 requests on a
+Zipf-weighted repeat mix are hits (**90.0%**); a hit costs **1.64 ms** p50 against **2.39 ms**
+with the cache off (**1.5×**); a cold miss costs 2.57 ms, inside run-to-run noise of the control,
+so the cache is not a tax on traffic it cannot help. The probes are the point rather than the
+speedup: two tenants asking the identical question string were answered **75 percent** and **40
+percent** from their own documents, each repeat hitting its own entry; the same question at three
+dates returned **three distinct revisions**, each hit returning its own date's text; and a
+re-ingested document turned a warm hit into a miss carrying the new figure.
+
+Two corrections to this section. The cache is **per process**: N workers hold N caches and N hit
+rates, and `/v1/metrics` reports the one that answered. And the load reports now run with
+`ATLAS_CACHE_SIZE=0`, because a 100-request-per-user curve over 24 frozen questions would
+otherwise measure the cache instead of the server — so `results/bench.md` and `results/soak.md`
+still describe the cost of answering every request. The **semantic half was not attempted**: the
+exact cache already removes the repeated work, and a similarity cache would add a threshold to
+tune plus a second way to leak. Paraphrased repeats in a real workload would be the evidence it
+needs, and there is none here.
 
 ## M26 — Grow without rebuilding
 

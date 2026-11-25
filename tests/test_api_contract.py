@@ -25,6 +25,7 @@ from tests.conftest import MINI_CORPUS
 ANSWER_KEYS = {
     "query", "text", "refused", "confidence", "citations", "mode", "degraded",
     "refusal_reason", "unseen", "as_of", "effective_from", "trace_id", "timings",
+    "cache",
 }
 
 

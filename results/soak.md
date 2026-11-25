@@ -25,6 +25,7 @@ Command: `python -m bench.sweep --soak-seconds 1800 --users 10` · commit `5398f
   dropped connections, and none of them changed an answer's content.
 - The per-tenant view is the only thing that grows with traffic, and it is keyed by
   tenant, so this run also checks that repeated requests do not accumulate per request.
+- The answer cache is off here (`ATLAS_CACHE_SIZE=0`), so this is the sustained cost of answering every request rather than the cost of repeating one; `results/cache.md` is where a warm cache is measured.
 
 - The other load model is committed beside this one: `results/soak-interactive.json` reports p95 9.89 ms at 10 users with 100 ms think time. The two answer different questions - headroom versus user traffic - and neither replaces the other.
 

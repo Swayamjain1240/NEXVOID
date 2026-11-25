@@ -1,6 +1,6 @@
 # Limitations register
 
-**Document ID:** ATL-LIM-001 · **Applies to:** tag `v1.7.0` · **Status:** current
+**Document ID:** ATL-LIM-001 · **Applies to:** tag `v1.9.0` · **Status:** current
 
 Every row names a limitation, the evidence that shows it is real, and what would remove it. A row
 without evidence would be a feeling, so there are none — if a gap is measurable it is in a report,
@@ -42,6 +42,7 @@ anything from `results/`.
 | L16 | **CI runs lint, tests and the gates, not the long measurements.** The 30-minute soak, the load curve and the clean-clone handover are run deliberately, not on every push. | `.github/workflows/ci.yml`, `results/soak.md` header | a regression in sustained performance would be found late |
 | L17 | **The temporal evidence is a smoke test, not an archive study.** 9 dated questions over 3 policies whose 6 revisions were authored for the purpose: consistent by construction, effective dates known exactly. A real archive has undated amendments, gaps and contradictory circulars. | `results/temporal.md`, `corpus/temporal/` | a real policy archive with its own dated history, and questions written by someone who did not author the revisions |
 | L19 | **The M22 speedup is a ratio on one laptop.** Two arms in one process over the same corpus, so the comparison is controlled, but the absolute numbers move with the host and the run (three runs: 2.00×, 2.12×, 2.26×). The naive arm exists only for this measurement and is selected by an environment variable nothing else sets. | `results/perf-m22.md`, `bench/perf.py` | repeated runs on a second machine and a second OS, reported as a range |
+| L20 | **The cache's hit rate belongs to an invented mix, and the cache is per process.** `results/cache.md` draws 240 requests from 24 frozen questions and hits 90.0%; a workload with no repeats would hit 0%, and this project has no traffic log to say which is closer. With N worker processes each holds its own cache, so the pool's effective hit rate is below any single worker's and `/v1/metrics` describes one worker. | `results/cache.md`, `bench/cache.py`, L13 | a traffic log, or one shared cache behind the workers — a second store, not a configuration change |
 | L18 | **Temporal support is one-directional.** A revision can be superseded, but a correction inside a revision in force cannot be dated without publishing a new revision. There is no transaction-time axis either, so the system answers "what was in force then", never "what did we say then". | ADR-0013 | a bitemporal store (valid time + recorded time), which is a new data model rather than a column |
 
 ## How to read a number from this repository

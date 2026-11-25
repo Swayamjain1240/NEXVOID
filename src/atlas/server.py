@@ -24,6 +24,7 @@ import os
 from http.server import ThreadingHTTPServer
 
 from .admission import Admission
+from .cache import AnswerCache
 from .config import SETTINGS, Settings
 from .handler import make_handler
 from .retrieval import HybridIndex
@@ -45,6 +46,8 @@ class ServerState:
             queue_limit=settings.max_waiting,
             wait_ms=settings.admission_wait_ms,
         )
+        # M25: exact answers for this process; a hit skips retrieval, the gate and extraction
+        self.cache = AnswerCache(settings.cache_size)
 
 
 # The stdlib default listen backlog is 5, which drops a burst of connections outright.

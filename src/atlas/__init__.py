@@ -1,3 +1,3 @@
 """Atlas - a multi-tenant, cited, refusal-first knowledge assistant."""
 
-__version__ = "1.8.0"
+__version__ = "1.9.0"

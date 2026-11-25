@@ -165,6 +165,8 @@ def main() -> int:
         max_inflight=SLOTS,
         max_waiting=WAITERS,
         admission_wait_ms=WAIT_MS,
+        # M25: a cache hit would skip the padding and the queueing this run exists to hold
+        cache_size=0,
     )
     answerable, _ = load_questions()
     questions = [row["query"] for row in answerable]

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import dataclasses
 import http.client
 import json
 import multiprocessing
@@ -37,6 +38,7 @@ _SRC = Path(__file__).resolve().parents[1] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
+from atlas.config import SETTINGS  # noqa: E402
 from atlas.server import ServerState, make_server  # noqa: E402
 from atlas.store import Store  # noqa: E402
 from eval.latency import percentile  # noqa: E402
@@ -58,7 +60,11 @@ def build_database(path: Path) -> None:
 
 
 def boot(db: Path) -> tuple[ThreadingHTTPServer, int]:
-    server = make_server(("127.0.0.1", 0), ServerState(str(db)))
+    # M25: the answer cache is off in every load report. These workloads repeat a frozen set of
+    # questions, so a warm cache would measure the cache rather than the server; the cache has
+    # its own report (`results/cache.md`) and its own workload.
+    settings = dataclasses.replace(SETTINGS, cache_size=0)
+    server = make_server(("127.0.0.1", 0), ServerState(str(db), settings=settings))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server, server.server_address[1]
 
@@ -338,6 +344,9 @@ def notes_for_sweep(rows: list[dict]) -> list[str]:
         f"{sum(row['requests'] for row in rows)} requests, all of them 503 OVERLOADED from the "
         "M23 bound rather than dropped connections. The 10-user level is the NFR-01 operating "
         "point and sits below the bound, so the target is measured without shedding.",
+        "- The answer cache is off here (`ATLAS_CACHE_SIZE=0`): 100 requests per user over 24 "
+        "questions would otherwise be a cache benchmark, not a retrieval one. `results/cache.md` "
+        "measures the cache, with its own repeat mix.",
         "- One process, one port, no container: this curve is the whole capacity story for the",
         "  deployment the project claims, and it says nothing about horizontal scaling.",
     ]
@@ -401,6 +410,9 @@ def notes_for_soak(row: dict, bench_p95: float | None) -> list[str]:
         "  dropped connections, and none of them changed an answer's content.",
         "- The per-tenant view is the only thing that grows with traffic, and it is keyed by",
         "  tenant, so this run also checks that repeated requests do not accumulate per request.",
+        "- The answer cache is off here (`ATLAS_CACHE_SIZE=0`), so this is the sustained cost of "
+        "answering every request rather than the cost of repeating one; `results/cache.md` is "
+        "where a warm cache is measured.",
     ]
 
 
@@ -426,6 +438,8 @@ def main() -> int:
 
     if args.render_existing:
         bench_payload = json.loads((RESULTS / "bench.json").read_text(encoding="utf-8"))
+        # notes are recomputed, not replayed: the prose is code, the numbers are data
+        bench_payload["notes"] = notes_for_sweep(bench_payload["rows"])
         write_bench(bench_payload["rows"], bench_payload)
         for name in ("soak.json", "soak-interactive.json"):
             soak_path = RESULTS / name

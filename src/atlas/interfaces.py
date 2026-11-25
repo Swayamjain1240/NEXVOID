@@ -90,6 +90,9 @@ class Answer:
     # not_yet_in_effect refusal - the date the revision that answers it took effect.
     as_of: str = ""
     effective_from: str = ""
+    # M25: "hit" when this body came from the exact cache. Its timings then describe the
+    # lookup and the serialisation, not a retrieval that did not happen.
+    cache: str = "miss"
 
 
 @runtime_checkable

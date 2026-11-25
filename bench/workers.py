@@ -69,7 +69,8 @@ def _wait_ready(port: int, timeout: float = 15.0) -> None:
 
 
 def boot_single(db: Path) -> tuple[object, int, ServerState]:
-    state = ServerState(str(db), settings=SETTINGS)
+    # M25: cache off, so this stays a curve about processes rather than about repeated questions
+    state = ServerState(str(db), settings=dataclasses.replace(SETTINGS, cache_size=0))
     server = make_server(("127.0.0.1", 0), state)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server, server.server_address[1], state
@@ -82,7 +83,7 @@ def boot_pool(db: Path, count: int) -> tuple[object, int, list]:
     children = [
         multiprocessing.Process(
             target=workers.serve_in_child,
-            args=(sock, str(db), dataclasses.replace(SETTINGS)),
+            args=(sock, str(db), dataclasses.replace(SETTINGS, cache_size=0)),
             daemon=True,
         )
         for _ in range(count)

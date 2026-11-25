@@ -65,6 +65,10 @@ temporal:
 perf:
 	$(PY) -m bench.perf
 
+# M25: the exact cache - hit rate, latency by state, tenancy and date probes
+cache:
+	$(PY) -m bench.cache
+
 # stage-2 layer 2 (M9): injection suite, tenant probes, log audit, degraded mode
 safety:
 	$(PY) -m eval.safety

@@ -33,4 +33,6 @@ def metrics_payload(state) -> dict:
     """Route counters plus capacity: a 503 is explainable after the fact (M23)."""
     payload = METRICS.snapshot()
     payload["admission"] = state.admission.snapshot()
+    # M25: hits, misses and the rate they imply, so a cache claim is checkable from outside
+    payload["cache"] = state.cache.snapshot()
     return payload

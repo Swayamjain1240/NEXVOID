@@ -36,6 +36,16 @@ class HybridIndex:
         """Drop one tenant's view; the next search rebuilds it from the store."""
         self._views.pop(tenant_id, None)
 
+    def corpus_hash(self, tenant_id: str) -> str:
+        """Content fingerprint of this tenant's view, for the M25 cache key.
+
+        Building the view is the 44 ms cost; a hit only happens when it is already warm, so
+        this is a dictionary lookup in the case that matters. An empty tenant hashes to
+        "empty", which still keys on the tenant itself.
+        """
+        view = self._view(tenant_id)
+        return view.corpus_hash if view is not None else "empty"
+
     def search(
         self, query: str, *, tenant_id: str, k: int, mode: str = "hybrid", as_of: str = ""
     ) -> list[Passage]:

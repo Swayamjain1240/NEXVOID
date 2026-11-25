@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from . import api, status
-from .answer import answer_query
+from .cache import answer_with_cache
 from .interfaces import AtlasError, InputError
 from .metrics import METRICS
 from .obs import redact
@@ -110,15 +110,9 @@ def make_handler(state) -> type:
         def _answer(self, request: dict) -> None:
             tenant = self.headers.get("X-Tenant", state.settings.default_tenant)
             try:
-                answer = answer_query(
-                    state.index,
-                    request["query"],
-                    tenant_id=tenant,
-                    settings=state.settings,
-                    mode=request["mode"],
-                    # M21: absent or "" means "as of now", so the old surface is unchanged
-                    as_of=request.get("as_of", ""),
-                )
+                # M25: an identical question, tenant, mode, date and corpus is answered from
+                # the exact cache; anything else goes through the pipeline unchanged
+                answer = answer_with_cache(state, request, tenant)
             except InputError as error:
                 self._error("INPUT_INVALID", 400, str(error))
                 return

@@ -133,6 +133,12 @@ class Settings:
         default_factory=lambda: _env_number("ATLAS_ADMISSION_WAIT_MS", 25.0, float)
     )
 
+    # M25 exact cache, per process. Keyed on tenant + query + mode + as_of + corpus_hash, so a
+    # hit can only be an identical question against identical documents. 0 disables it, which
+    # is how the load reports keep measuring the server instead of the cache; the cache itself
+    # is measured in `results/cache.md`.
+    cache_size: int = field(default_factory=lambda: _env_number("ATLAS_CACHE_SIZE", 256, int))
+
     # There is deliberately no latency knob here. The overload run needs answered requests to be
     # slow so the bound is reachable on one laptop, and it gets that by wrapping the answer
     # function inside `bench/overload.py` - a harness concern, not a setting the shipped server

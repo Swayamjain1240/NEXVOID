@@ -213,6 +213,7 @@ To see the bound actually bind, `results/overload.md` runs it deliberately under
 | `ATLAS_MAX_INFLIGHT` | 32 | requests served at once |
 | `ATLAS_MAX_WAITING` | 64 | requests allowed to wait for a slot |
 | `ATLAS_ADMISSION_WAIT_MS` | 25 | how long a waiter waits before the 503 |
+| `ATLAS_CACHE_SIZE` | 256 | exact-answer cache entries per process; 0 disables it |
 
 ### Worker Processes (M24)
 
@@ -225,6 +226,18 @@ To see the bound actually bind, `results/overload.md` runs it deliberately under
 | 4 | 2.50 ms | **5.10 ms** | 587 | 4 |
 
 p95 falls 4.9× and throughput rises 1.55×: at a fixed ten users offering one request at a time, the client caps total throughput long before the workers do, so what the extra processes buy is less queueing. Full report: `results/workers.md`.
+
+### Exact Answer Cache (M25)
+
+An identical question, tenant, mode, date and corpus is answered without retrieval. The key is `(tenant, query, mode, as_of, corpus_hash)`: the tenant is part of the lookup before any comparison, so a hit cannot cross tenants; the date is in it, so a 2024 question never receives the 2026 rule; and the corpus fingerprint is in it, so re-ingesting a document turns old entries into misses.
+
+| state | requests | p50 |
+|---|---:|---:|
+| hit | 240 | **1.64 ms** |
+| miss, cache off (control) | 264 | 2.39 ms |
+| miss, cold (view warm) | 24 | 2.57 ms |
+
+On a repeat-heavy mix (240 requests over 24 frozen questions, Zipf-weighted and invented — there is no traffic log here) **90.0%** of requests hit. The probes matter more than the 1.5×: two tenants asking the same string were answered 75 percent and 40 percent from their own documents, the same question at three dates returned three distinct revisions, and a re-ingested document was a miss carrying the new figure. Full report: `results/cache.md`.
 
 ---
 

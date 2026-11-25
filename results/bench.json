@@ -61,6 +61,7 @@
     "  went to a file, as a deployed process writes it (46.52 ms, PASS). The logger is in the",
     "  tail path; that is a result about the service, not an excuse for the number.",
     "- Shed at every level: 0 of 6100 requests, all of them 503 OVERLOADED from the M23 bound rather than dropped connections. The 10-user level is the NFR-01 operating point and sits below the bound, so the target is measured without shedding.",
+    "- The answer cache is off here (`ATLAS_CACHE_SIZE=0`): 100 requests per user over 24 questions would otherwise be a cache benchmark, not a retrieval one. `results/cache.md` measures the cache, with its own repeat mix.",
     "- One process, one port, no container: this curve is the whole capacity story for the",
     "  deployment the project claims, and it says nothing about horizontal scaling."
   ]

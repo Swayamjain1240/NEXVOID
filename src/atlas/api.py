@@ -83,6 +83,9 @@ def answer_payload(answer, started: float) -> dict:
         ],
         "mode": answer.mode,
         "degraded": answer.degraded,
+        # M25: "hit" or "miss", so a caller (and the cache report) can tell a served answer
+        # from a cached one without inferring it from latency.
+        "cache": answer.cache,
         # "" when answered; otherwise why, so a client can say the true thing instead of
         # blaming the threshold for a topic the corpus does not carry (M14), or for a rule
         # that only exists in a later revision (M21).
