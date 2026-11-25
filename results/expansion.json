@@ -1,0 +1,588 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, frozen at M1)",
+    "commit": "86db093",
+    "regenerate_with": "python -m eval.run_eval"
+  },
+  "method": "Corpus-derived expansion, measured against FR-17 (M27).\n\nThe rules, fixed before the numbers:\n\n1. **Fit on v1.** The grid is PMI thresholds, with 0.0 meaning off. The fitted threshold is the\n   *smallest* one that costs v1 neither an answer nor a refusal - the most expansion the tuned set\n   tolerates. Expansion is a hypothesis, not a knob to optimise, and a threshold that already\n   breaks v1 has nothing left to prove on v3.\n2. **Decide on v3.** v2 is reported as a replication; v4 is the set written for the novelty\n   question, judged here but not decided on.\n3. **Adopt only if** v3 refusal accuracy or answer rate improves *and* no answerable question is\n   lost on any of the four sets. That is FR-17's wording: expansion has to buy refusals or answers\n   without costing an answer.\n\nThe refusal gate keeps reading the question as asked (see `src/atlas/expand.py`), so an\nimprovement here is retrieval finding a better passage, not the gate forgetting what novelty\nmeans. Confidence is measured once per (threshold, question) and every row below is that same\nmeasurement re-bucketed.\n\nWrites `results/expansion.md` and `results/expansion.json`.",
+  "encoder": "potion-base-8M",
+  "theta": 0.31,
+  "floor": 0.5,
+  "grid": [
+    0.0,
+    0.5,
+    1.0,
+    1.5,
+    2.0,
+    2.5,
+    3.0
+  ],
+  "limit": 3,
+  "expander_terms": 583,
+  "table": {
+    "0.0": {
+      "v1": {
+        "answer_rate": 0.9583,
+        "refusal_accuracy": 0.8333,
+        "added_terms": 0.0
+      },
+      "v2": {
+        "answer_rate": 0.9167,
+        "refusal_accuracy": 0.5,
+        "added_terms": 0.0
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.6667,
+        "added_terms": 0.0
+      },
+      "v4": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.6667,
+        "added_terms": 0.0
+      }
+    },
+    "0.5": {
+      "v1": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.3333,
+        "added_terms": 14.767
+      },
+      "v2": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.1667,
+        "added_terms": 14.444
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.5,
+        "added_terms": 16.722
+      },
+      "v4": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.3333,
+        "added_terms": 13.444
+      }
+    },
+    "1.0": {
+      "v1": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.3333,
+        "added_terms": 12.8
+      },
+      "v2": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.1667,
+        "added_terms": 11.389
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.5,
+        "added_terms": 13.222
+      },
+      "v4": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.3333,
+        "added_terms": 12.389
+      }
+    },
+    "1.5": {
+      "v1": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.5,
+        "added_terms": 8.8
+      },
+      "v2": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.1667,
+        "added_terms": 8.944
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.5,
+        "added_terms": 8.333
+      },
+      "v4": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.3333,
+        "added_terms": 10.056
+      }
+    },
+    "2.0": {
+      "v1": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.5,
+        "added_terms": 5.9
+      },
+      "v2": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.3333,
+        "added_terms": 5.444
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.5,
+        "added_terms": 5.056
+      },
+      "v4": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.5,
+        "added_terms": 5.833
+      }
+    },
+    "2.5": {
+      "v1": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.8333,
+        "added_terms": 0.733
+      },
+      "v2": {
+        "answer_rate": 0.9167,
+        "refusal_accuracy": 0.5,
+        "added_terms": 1.0
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.5,
+        "added_terms": 1.167
+      },
+      "v4": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.6667,
+        "added_terms": 1.611
+      }
+    },
+    "3.0": {
+      "v1": {
+        "answer_rate": 0.9583,
+        "refusal_accuracy": 0.8333,
+        "added_terms": 0.0
+      },
+      "v2": {
+        "answer_rate": 0.9167,
+        "refusal_accuracy": 0.5,
+        "added_terms": 0.0
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.6667,
+        "added_terms": 0.0
+      },
+      "v4": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.6667,
+        "added_terms": 0.0
+      }
+    }
+  },
+  "fit": {
+    "rule": "largest grid threshold that leaves v1 answer rate and refusal unchanged",
+    "eligible": [
+      2.5,
+      3.0
+    ],
+    "fitted": 2.5
+  },
+  "decision": {
+    "adopted": false,
+    "improves_v3": false,
+    "keeps_answer_rate": true
+  },
+  "detail": {
+    "v3": [
+      {
+        "id": "v3-001",
+        "answerable": true,
+        "confidence_before": 0.3647,
+        "confidence_after": 0.3993,
+        "added": [
+          "alone",
+          "cancellation",
+          "initiated"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-002",
+        "answerable": true,
+        "confidence_before": 0.4216,
+        "confidence_after": 0.4626,
+        "added": [
+          "arithmetic",
+          "bound",
+          "company"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-003",
+        "answerable": true,
+        "confidence_before": 0.5055,
+        "confidence_after": 0.5055,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-004",
+        "answerable": true,
+        "confidence_before": 0.5278,
+        "confidence_after": 0.5278,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-005",
+        "answerable": true,
+        "confidence_before": 0.4875,
+        "confidence_after": 0.4875,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-006",
+        "answerable": true,
+        "confidence_before": 0.5808,
+        "confidence_after": 0.5808,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-007",
+        "answerable": true,
+        "confidence_before": 0.4728,
+        "confidence_after": 0.6198,
+        "added": [
+          "audited",
+          "considered",
+          "disbursement"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-008",
+        "answerable": true,
+        "confidence_before": 0.6021,
+        "confidence_after": 0.6021,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-009",
+        "answerable": true,
+        "confidence_before": 0.5646,
+        "confidence_after": 0.5646,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-010",
+        "answerable": true,
+        "confidence_before": 0.5666,
+        "confidence_after": 0.5666,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-011",
+        "answerable": true,
+        "confidence_before": 0.5444,
+        "confidence_after": 0.5444,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-012",
+        "answerable": true,
+        "confidence_before": 0.4437,
+        "confidence_after": 0.4437,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-013",
+        "answerable": false,
+        "confidence_before": 0.2136,
+        "confidence_after": 0.3852,
+        "added": [
+          "accessible",
+          "archive",
+          "book"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v3-014",
+        "answerable": false,
+        "confidence_before": 0.3404,
+        "confidence_after": 0.3404,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-015",
+        "answerable": false,
+        "confidence_before": 0.2903,
+        "confidence_after": 0.365,
+        "added": [
+          "again",
+          "among",
+          "applicant"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v3-016",
+        "answerable": false,
+        "confidence_before": 0.3048,
+        "confidence_after": 0.4031,
+        "added": [
+          "150",
+          "advance",
+          "break"
+        ],
+        "refused_before": true,
+        "refused_after": false
+      },
+      {
+        "id": "v3-017",
+        "answerable": false,
+        "confidence_before": 0.313,
+        "confidence_after": 0.3899,
+        "added": [
+          "bonafide",
+          "closed",
+          "complete"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v3-018",
+        "answerable": false,
+        "confidence_before": 0.4965,
+        "confidence_after": 0.4965,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      }
+    ],
+    "v4": [
+      {
+        "id": "v4-001",
+        "answerable": true,
+        "confidence_before": 0.4952,
+        "confidence_after": 0.4952,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-002",
+        "answerable": true,
+        "confidence_before": 0.6042,
+        "confidence_after": 0.6042,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-003",
+        "answerable": true,
+        "confidence_before": 0.5232,
+        "confidence_after": 0.5232,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-004",
+        "answerable": true,
+        "confidence_before": 0.3893,
+        "confidence_after": 0.3893,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-005",
+        "answerable": true,
+        "confidence_before": 0.5897,
+        "confidence_after": 0.5897,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-006",
+        "answerable": true,
+        "confidence_before": 0.3712,
+        "confidence_after": 0.4688,
+        "added": [
+          "150",
+          "accessible",
+          "advance",
+          "alone",
+          "archive",
+          "break",
+          "cancellation",
+          "circulation",
+          "initiated"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-007",
+        "answerable": true,
+        "confidence_before": 0.5032,
+        "confidence_after": 0.4345,
+        "added": [
+          "again",
+          "among",
+          "applicant"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-008",
+        "answerable": true,
+        "confidence_before": 0.4142,
+        "confidence_after": 0.4451,
+        "added": [
+          "2450",
+          "again",
+          "among",
+          "applicant",
+          "appointment",
+          "documented"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-009",
+        "answerable": true,
+        "confidence_before": 0.489,
+        "confidence_after": 0.45,
+        "added": [
+          "bond",
+          "damage",
+          "lie"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-010",
+        "answerable": true,
+        "confidence_before": 0.435,
+        "confidence_after": 0.435,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-011",
+        "answerable": true,
+        "confidence_before": 0.504,
+        "confidence_after": 0.504,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-012",
+        "answerable": true,
+        "confidence_before": 0.5968,
+        "confidence_after": 0.633,
+        "added": [
+          "verification"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-013",
+        "answerable": false,
+        "confidence_before": 0.4202,
+        "confidence_after": 0.398,
+        "added": [
+          "average",
+          "graded",
+          "mean"
+        ],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-014",
+        "answerable": false,
+        "confidence_before": 0.3958,
+        "confidence_after": 0.3958,
+        "added": [],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v4-015",
+        "answerable": false,
+        "confidence_before": 0.3745,
+        "confidence_after": 0.3745,
+        "added": [],
+        "refused_before": false,
+        "refused_after": false
+      },
+      {
+        "id": "v4-016",
+        "answerable": false,
+        "confidence_before": 0.1631,
+        "confidence_after": 0.2694,
+        "added": [
+          "8th",
+          "basket",
+          "home"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v4-017",
+        "answerable": false,
+        "confidence_before": 0.2549,
+        "confidence_after": 0.2765,
+        "added": [
+          "48"
+        ],
+        "refused_before": true,
+        "refused_after": true
+      },
+      {
+        "id": "v4-018",
+        "answerable": false,
+        "confidence_before": 0.2246,
+        "confidence_after": 0.2246,
+        "added": [],
+        "refused_before": true,
+        "refused_after": true
+      }
+    ]
+  }
+}

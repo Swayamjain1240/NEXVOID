@@ -7,9 +7,8 @@ text came from (FR-14, FR-15). Refusal is a deliberate `Answer` with `refused=Tr
 citations (FR-16), never an exception: an empty tenant is "no documents", which the gate
 refuses safely. FR-19: an empty or stopword-only query is an InputError (HTTP 400 upstream).
 
-M21: `as_of` answers against the revisions in force on that date (FR-29), and a rule that only a
-later revision carries is refused with that date (FR-30) - "not yet" and "I don't know" are
-different facts, and an assistant that conflates them is unusable at a counter.
+M21: `as_of` answers against the revisions in force on that date (FR-29); a rule only a later
+revision carries is refused with that date (FR-30). M27 edits the retrieval query only.
 """
 
 from __future__ import annotations
@@ -20,6 +19,7 @@ import uuid
 
 from .breaker import CircuitBreaker, CircuitOpen
 from .config import SETTINGS, Settings
+from .expand import query_for_retrieval
 from .guard import scan
 from .interfaces import Answer, Citation, DependencyError, InputError, Passage
 from .retrieval import HybridIndex
@@ -71,8 +71,9 @@ def answer_query(
 
     stages: dict[str, float] = {}  # M22: sub-stages, written into this request's dict
     retrieve_start = time.perf_counter()
+    retrieval_query = query_for_retrieval(query, index, tenant_id, settings)  # M27
     report = index.diagnostics(
-        query, tenant_id=tenant_id, mode=mode, as_of=as_of, timings=stages
+        retrieval_query, tenant_id=tenant_id, mode=mode, as_of=as_of, timings=stages
     )
     retrieve_ms = (time.perf_counter() - retrieve_start) * 1000.0
     gate_start = time.perf_counter()
@@ -111,7 +112,7 @@ def answer_query(
         # FR-30: the evidence exists, it just did not exist *yet* on the date asked about. The
         # check runs the same retrieval with no date filter and asks what would have won.
         not_yet = later_revision(
-            index.diagnostics(query, tenant_id=tenant_id, mode=mode),
+            index.diagnostics(retrieval_query, tenant_id=tenant_id, mode=mode),
             as_of=as_of,
             theta=settings.theta,
         )

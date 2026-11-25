@@ -218,8 +218,13 @@ def soak_line(ten: dict | None) -> list[str]:
     ]
 
 
-def write_bench(rows: list[dict], payload: dict, *, stem: str = "bench", label: str = "") -> None:
-    """`stem` lets a one-off run keep its own report instead of replacing the canonical curve."""
+def write_bench(rows: list[dict], payload: dict, *, stem: str = "bench", label: str = "",
+                command: str = "python -m bench.sweep") -> None:
+    """`stem` lets a one-off run keep its own report instead of replacing the canonical curve.
+
+    `command` is the invocation that produced this report, printed in its header: a labelled
+    stem is only reproducible if the flags that made it are written down with it.
+    """
     RESULTS.mkdir(exist_ok=True)
     (RESULTS / f"{stem}.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
     ten = next((row for row in rows if row["users"] == NFR01_USERS), None)
@@ -230,7 +235,7 @@ def write_bench(rows: list[dict], payload: dict, *, stem: str = "bench", label: 
     lines = [
         title,
         "",
-        f"Command: `python -m bench.sweep` · commit `{payload['provenance']['commit']}` · "
+        f"Command: `{command}` · commit `{payload['provenance']['commit']}` · "
         f"platform: {payload['provenance']['platform']}",
         "",
         "| users | requests | served | shed | failures | p50 ms | p95 ms | p99 ms | rps |",
@@ -436,8 +441,12 @@ def main() -> int:
     )
     parser.add_argument(
         "--render-existing",
-        action="store_true",
-        help="rewrite bench.md/soak.md from the committed json, without running load",
+        nargs="?",
+        const="bench",
+        default=None,
+        metavar="STEM",
+        help="rewrite a report from its committed json without running load; STEM defaults to "
+        "bench, and any other stem re-renders only that report",
     )
     parser.add_argument(
         "--out",
@@ -448,10 +457,23 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.render_existing:
-        bench_payload = json.loads((RESULTS / "bench.json").read_text(encoding="utf-8"))
+        stem = args.render_existing
+        path = RESULTS / f"{stem}.json"
+        if not path.exists():
+            raise SystemExit(f"no results/{stem}.json to re-render")
+        bench_payload = json.loads(path.read_text(encoding="utf-8"))
         # notes are recomputed, not replayed: the prose is code, the numbers are data
         bench_payload["notes"] = notes_for_sweep(bench_payload["rows"])
-        write_bench(bench_payload["rows"], bench_payload)
+        write_bench(
+            bench_payload["rows"],
+            bench_payload,
+            stem=stem,
+            label=bench_payload.get("label", ""),
+            command=bench_payload.get("command", "python -m bench.sweep"),
+        )
+        if stem != "bench":
+            print(f"re-rendered: results/{stem}.md")
+            return 0
         for name in ("soak.json", "soak-interactive.json"):
             soak_path = RESULTS / name
             if not soak_path.exists():
@@ -520,8 +542,19 @@ def main() -> int:
         contextlib.redirect_stdout(sink),
     ):
         rows = sweep(questions, db, levels=levels, per_user=args.requests, token=args.token)
-    payload = {"provenance": provenance(), "rows": rows, "notes": notes_for_sweep(rows)}
-    write_bench(rows, payload, stem=args.out, label=args.label)
+    command = "python -m bench.sweep"
+    if args.out != "bench":
+        command += f" --out {args.out}"
+    if args.label:
+        command += f' --label "{args.label}"'
+    payload = {
+        "provenance": provenance(),
+        "rows": rows,
+        "notes": notes_for_sweep(rows),
+        "command": command,
+        "label": args.label,
+    }
+    write_bench(rows, payload, stem=args.out, label=args.label, command=command)
     print(f"written: results/{args.out}.md, results/{args.out}.json")
     return 0
 

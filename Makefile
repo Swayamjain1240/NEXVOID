@@ -117,5 +117,8 @@ serve:
 handover:
 	$(PY) scripts/repro_clone.py
 
+expansion:
+	$(VENV_PY) -m eval.expansion
+
 # the eval gate runs in CI against results/baseline.json (ATL-EDD-001 s.7);
 # product-side theta calibration lands in M4 with the answer path.

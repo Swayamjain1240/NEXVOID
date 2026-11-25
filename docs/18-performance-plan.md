@@ -2,7 +2,7 @@
 
 **Document ID:** ATL-PERF-002 · **Applies to:** post-`v1.5.0` · **Status:** M22 complete at
 `v1.6.0`, M23 complete at `v1.7.0`, M24 complete at `v1.8.0`, M25 complete at `v1.9.0`,
-M26 complete at `v1.10.0`; M27 proposed
+M26 complete at `v1.10.0`, M27 complete at `v1.11.0`
 
 The project is complete and every claim is measured. This plan is about making the same system
 faster and more predictable **without weakening the evidence discipline**: each phase ends in a
@@ -218,6 +218,17 @@ one. The evidence says expansion helps *and* that it can hurt: +26.7% on BM25 in
 **Expected:** a measurable move in refusal accuracy on the appended sets, or a documented "not
 adopted" with the numbers. **Exit criteria:** `results/expansion.md`, and FR-17 either improves with
 no answerable question lost, or the experiment is recorded as rejected.
+
+**Measured at `v1.11.0` — rejected.** `results/expansion.md`: a PMI table over the tenant's own
+chunks keeps 583 terms, and the fitted threshold is 2.5 — the smallest that costs v1 neither an
+answer nor a refusal, i.e. the most expansion the tuned set tolerates (0.73 terms added per query).
+Decided on v3, it moves v1's answer rate 0.9583 → 1.0000 and **loses a v3 refusal** (0.6667 →
+0.5000): v3-016's confidence rises 0.3048 → 0.4031 on the strength of "150, advance, break", a
+stray numeral and two unrelated words. At 0.5 the effect is far worse — v1 refusal 0.8333 → 0.3333
+for 14.77 added terms — which is the failure the literature predicts when queries are already
+lexically aligned with the corpus. v2 and v4 are unchanged, `make determinism` is PASS with 0
+differences, and the shipped default stays `expansion_threshold = 0.0`: FR-17 remains open, and the
+experiment is recorded as rejected rather than tuned into an adoption.
 
 ---
 

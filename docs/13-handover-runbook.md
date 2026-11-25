@@ -48,6 +48,8 @@ repository is not reproducible, this receipt is the answer.
 | safety suite: injections, tenant probes, log audit, degraded mode | `results/safety.md` |
 | out-of-sample sets (v2, v3): retrieval generalises, the refusal gate does not | `results/holdout.md` |
 | second refusal signal: v3 0.50 → 0.67, v2 0.17 → 0.33, no answers lost | `results/support.md` |
+| corpus-derived expansion: fitted 2.5, v1 answer 0.96 → 1.00 but v3 refusal 0.67 → 0.50, not adopted | `results/expansion.md` |
+| second session of the same load curve (17.35 ms p95 at 10 users, 219 of 5,000 shed at 50) | `results/bench-second-session.md` |
 | answer selection: topic-list answers 8 → 0, top-1 from the right document 20/24 · 12/12 · 11/12 | `results/answer_selection.md` |
 | fusion depth: offline hybrid 0.88 → 0.92 (NFR-04 met), and the FR-11 counterfactual | `results/fusion.md` |
 | phrase-level novelty on a fresh v4 set: refused, it also refuses answerable questions | `results/phrase.md` |

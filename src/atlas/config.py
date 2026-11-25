@@ -100,6 +100,13 @@ class Settings:
     # the tightest floor that refuses none of them) and judged on v3, where it moved refusal
     # accuracy 0.5000 -> 0.6667 without refusing a single answerable question. 0.0 disables it.
     refusal_novelty_floor: float = 0.50
+
+    # Corpus-derived expansion (M27, results/expansion.md): append up to `expansion_terms` PMI
+    # neighbours of each query term to the retrieval query. The refusal gate never sees the
+    # expansion, so novelty is still measured on the question as asked. 0.0 disables it, and it
+    # stays disabled unless the experiment adopts a threshold.
+    expansion_threshold: float = 0.0
+    expansion_terms: int = 3
     theta_candidates_trained: tuple[float, ...] = (
         0.20,
         0.25,

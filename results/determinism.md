@@ -6,8 +6,8 @@ and diffed field by field. The committed reports are restored afterwards.
 
 | run | command | exit | seconds | content hash |
 |---|---|---|---|---|
-| 1 | `eval.run_eval` | 0 | 3.44 | `03927d0107cf3472` |
-| 2 | `eval.run_eval` | 0 | 1.13 | `03927d0107cf3472` |
+| 1 | `eval.run_eval` | 0 | 0.89 | `eeeca575cfd699d0` |
+| 2 | `eval.run_eval` | 0 | 0.84 | `eeeca575cfd699d0` |
 
 Keys ignored as volatile on purpose: none — the payloads carry no clock, so this is a byte-exact comparison.
 

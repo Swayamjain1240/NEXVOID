@@ -1,9 +1,6 @@
 """One tenant's in-memory retrieval view: BM25, vectors, reranker (ATL-SwDD-001 s.6-s.7).
 
-Split out of `hybrid.py` in M21 so the file that owns the public index can carry the
-`as_of` parameter without crossing the 200-line ceiling. M22 adds two things and removes
-one: stage timings written into a request-owned dict, a coverage computation that reads
-the cached token sets the reranker already holds, and the second query embedding.
+Split out of `hybrid.py` in M21; M22 caches the token sets and timings it already held.
 """
 
 from __future__ import annotations
@@ -11,6 +8,7 @@ from __future__ import annotations
 import numpy as np
 
 from ..config import Settings
+from ..expand import TermExpander
 from ..interfaces import Passage
 from ..store import StoredChunk
 from ..text.tokenize import bigrams, tokenize
@@ -43,14 +41,14 @@ class TenantView:
         self._reranker = build_reranker(self._sparse.idf, settings=settings)
         self._tokens: list[frozenset[str]] = []
         self._pairs: list[frozenset[str]] = []
+        self._expander: TermExpander | None = None  # M27: built on first use, never at boot
         features: dict[int, tuple] = {}
         for idx, chunk in enumerate(self._chunks):
             ordered = tokenize(chunk.text)
             tokens, pairs = set(ordered), set(bigrams(ordered))
             self._tokens.append(frozenset(tokens))
             self._pairs.append(frozenset(pairs))
-            # bigrams of a *set* are hash-salted per process, which made identical runs rank
-            # differently (M10 reproducibility check); order them from the tokens.
+            # a set's bigrams are hash-salted per process (M10): order them from the tokens.
             features[idx] = (
                 tokens,
                 pairs,
@@ -60,8 +58,7 @@ class TenantView:
         self._features = features  # kept for M26: an extend updates this dict, not a rebuild
         self._reranker.attach_features(features)
         self.mask = WindowMask(self._chunks, self._tokens)
-        # M22: the gate reads these caches instead of re-tokenising the winning passage,
-        # which was 71% of query CPU until it was measured (results/perf-m22.md).
+        # M22: the gate reads these caches; re-tokenising the winner was 71% of query CPU.
         self.confidence = Confidence(
             idf=self._sparse.idf,
             matrix=self._matrix,
@@ -84,6 +81,12 @@ class TenantView:
     def vocabulary_for(self, as_of: str) -> frozenset[str]:
         """Vocabulary of the revisions in force, so novelty is judged against that date."""
         return self.mask.vocabulary_for(as_of)
+
+    def expander(self) -> TermExpander:
+        """PMI table over this view's chunks (M27), built on first use; off by default."""
+        if self._expander is None:
+            self._expander = TermExpander(self._tokens)
+        return self._expander
 
     def embed_query(self, query: str, *, timings: dict[str, float] | None = None) -> np.ndarray:
         """The query vector, computed once per request so the gate need not re-embed it."""
@@ -131,11 +134,7 @@ class TenantView:
         query_vec: np.ndarray | None = None,
         timings: dict[str, float] | None = None,
     ) -> tuple[list[tuple[int, float, str, str, str]], dict[str, dict[int, float]]]:
-        """What the reranker sees: fused candidates plus their score context (shared with the
-        M8 trainer on purpose - training on another pipeline is how a ranker stops working).
-        `depth` truncates each retriever's list before fusion (M16); `allowed` filters inside
-        both retrievers, so a version out of force cannot even vote (M21).
-        """
+        """Fused candidates and their score context; `depth` truncates, `allowed` filters (M21)."""
         s = self._settings
         started = start()
         sparse_pool = self._sparse.search(tokenize(query), k=s.sparse_candidates, allowed=allowed)
