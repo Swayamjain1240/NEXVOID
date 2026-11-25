@@ -29,6 +29,30 @@ class BM25Index:
         for term, postings in self._postings.items():
             self.idf[term] = math.log((n_docs + 1) / (len(postings) + 0.5))
 
+    def append(self, chunk_texts: list[str]) -> None:
+        """Extend the index with new chunks, keeping every posting already built (M26).
+
+        The sweep over `idf` is O(vocabulary), not O(chunks): idf is a function of document
+        frequency and corpus size, both of which just moved, so every term's weight shifts a
+        little and has to be recomputed. That is cheap next to re-tokenising the corpus, and
+        it is the reason an ingest no longer costs the same as a cold start.
+        """
+        start = len(self._doc_len)
+        token_docs = [tokenize(text) for text in chunk_texts]
+        self._doc_len.extend(len(tokens) for tokens in token_docs)
+        self._avgdl = sum(self._doc_len) / len(self._doc_len) if self._doc_len else 0.0
+        for offset, tokens in enumerate(token_docs):
+            for term, tf in _term_counts(tokens).items():
+                self._postings.setdefault(term, []).append((start + offset, tf))
+        n_docs = len(self._doc_len)
+        # in place: the embedder and the rankers hold this dict, and a replacement would
+        # leave them scoring with the idf of the previous corpus
+        self.idf.clear()
+        self.idf.update(
+            (term, math.log((n_docs + 1) / (len(postings) + 0.5)))
+            for term, postings in self._postings.items()
+        )
+
     def search(
         self, query_terms: list[str], *, k: int, allowed: frozenset[int] | None = None
     ) -> list[tuple[int, float]]:

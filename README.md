@@ -214,6 +214,7 @@ To see the bound actually bind, `results/overload.md` runs it deliberately under
 | `ATLAS_MAX_WAITING` | 64 | requests allowed to wait for a slot |
 | `ATLAS_ADMISSION_WAIT_MS` | 25 | how long a waiter waits before the 503 |
 | `ATLAS_CACHE_SIZE` | 256 | exact-answer cache entries per process; 0 disables it |
+| `ATLAS_RELOAD_MS` | 1000 | how often a serving process checks the store for an ingest; 0 disables |
 
 ### Worker Processes (M24)
 
@@ -238,6 +239,18 @@ An identical question, tenant, mode, date and corpus is answered without retriev
 | miss, cold (view warm) | 24 | 2.57 ms |
 
 On a repeat-heavy mix (240 requests over 24 frozen questions, Zipf-weighted and invented — there is no traffic log here) **90.0%** of requests hit. The probes matter more than the 1.5×: two tenants asking the same string were answered 75 percent and 40 percent from their own documents, the same question at three dates returned three distinct revisions, and a re-ingested document was a miss carrying the new figure. Full report: `results/cache.md`.
+
+### Growing Without Rebuilding (M26)
+
+An ingest no longer drops the tenant view. New chunks are appended — BM25 postings, vector rows, token caches, ranker features — and every vector already computed is reused; SQLite runs in WAL mode so an ingest can run while the process serves, and `ATLAS_RELOAD_MS` is how often a serving process checks for one.
+
+| chunks | cold start | warm query p50 | rebuild | append 5 documents |
+|---|---:|---:|---:|---:|
+| 34 | 66.7 ms | 0.11 ms | 67.0 ms | 27.1 ms |
+| 1,053 | 1,761 ms | 3.93 ms | 1,755 ms | 43.8 ms |
+| 10,053 | 13,912 ms | 33.11 ms | 14,770 ms | 545 ms |
+
+At 10k chunks an append costs **545 ms against a 14,770 ms rebuild (27×)**, and a warm query 33.11 ms — linear in the corpus, which is the arithmetic an ANN index would have to beat and does not at these NFRs. Cold start is the expensive number and is paid once per process. The 1k and 10k levels are generated text: a cost measurement, not a quality claim. Full report: `results/scale.md`.
 
 ---
 

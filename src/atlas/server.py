@@ -21,6 +21,7 @@ an unsupported method or route -> 405/404 with the same error envelope, never an
 from __future__ import annotations
 
 import os
+import time
 from http.server import ThreadingHTTPServer
 
 from .admission import Admission
@@ -48,6 +49,21 @@ class ServerState:
         )
         # M25: exact answers for this process; a hit skips retrieval, the gate and extraction
         self.cache = AnswerCache(settings.cache_size)
+        self._reloaded: dict[str, float] = {}
+
+    def reload(self, tenant_id: str) -> str:
+        """Notice an ingest done by another process, at most once per `reload_ms` (M26).
+
+        The gate is a clock, not a counter: a busy tenant must not pay a store query per
+        request, and a quiet one must still pick up the new document within the interval.
+        """
+        if not self.settings.reload_ms:
+            return "off"
+        now = time.monotonic()
+        if now - self._reloaded.get(tenant_id, 0.0) < self.settings.reload_ms / 1000.0:
+            return "throttled"
+        self._reloaded[tenant_id] = now
+        return self.index.refresh(tenant_id)
 
 
 # The stdlib default listen backlog is 5, which drops a burst of connections outright.

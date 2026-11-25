@@ -32,3 +32,4 @@ test or report that demonstrates them.
 | NFR-01 | the bound under real concurrency: 84.0% shed at 4 slots, with served and shed p95 | `results/overload.md` |
 | NFR-01 | 1/2/4 worker processes behind one port: p95 and throughput per level | `results/workers.md` |
 | NFR-01 | exact cache: hit rate, latency by cache state, and the tenancy/date/invalidation probes | `results/cache.md` |
+| NFR-03 | cold start, query and ingest cost at 34 / 1k / 10k chunks, rebuild shown separately | `results/scale.md` |

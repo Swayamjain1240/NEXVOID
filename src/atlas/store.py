@@ -53,6 +53,9 @@ class Store:
         self._conn = sqlite3.connect(str(self._path), check_same_thread=False)
         self._conn.executescript(SCHEMA)
         migrate(self._conn)
+        # M26: WAL lets an ingest (a writer, usually another process) run while this process
+        # serves reads. Without it a write takes the whole database lock and a query waits.
+        self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.commit()
 
     def close(self) -> None:
@@ -146,6 +149,20 @@ class Store:
             (tenant_id, doc_id),
         ).fetchall()
         return [(row[0], row[1], row[2]) for row in rows]
+
+    def corpus_signature(self, tenant_id: str) -> str:
+        """Cheap change detector for one tenant: its document ids and content hashes (M26).
+
+        A running view compares this against the signature it was built from, so an ingest in
+        another process is noticed without polling chunk rows or trusting a file timestamp.
+        """
+        if not tenant_id:
+            raise TenantError("empty tenant_id")
+        rows = self._conn.execute(
+            "SELECT doc_id, content_hash FROM documents WHERE tenant_id = ? ORDER BY doc_id",
+            (tenant_id,),
+        ).fetchall()
+        return blake2b_hex("\0".join(f"{doc}\0{hash}" for doc, hash in rows), length=16)
 
     def stats(self, *, tenant_id: str) -> dict[str, int]:
         """{documents: n, chunks: n}; the ingest acceptance check (FR-01) reads this."""

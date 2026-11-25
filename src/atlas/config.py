@@ -139,6 +139,13 @@ class Settings:
     # is measured in `results/cache.md`.
     cache_size: int = field(default_factory=lambda: _env_number("ATLAS_CACHE_SIZE", 256, int))
 
+    # M26: how often a serving process asks the store whether another process ingested
+    # something. One cheap query per interval per tenant; 0 disables the check, which is how
+    # the tests that want a frozen view run it.
+    reload_ms: float = field(
+        default_factory=lambda: _env_number("ATLAS_RELOAD_MS", 1000.0, float)
+    )
+
     # There is deliberately no latency knob here. The overload run needs answered requests to be
     # slow so the bound is reachable on one laptop, and it gets that by wrapping the answer
     # function inside `bench/overload.py` - a harness concern, not a setting the shipped server

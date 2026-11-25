@@ -1,8 +1,8 @@
 # 18 — Performance plan (M22–M27)
 
 **Document ID:** ATL-PERF-002 · **Applies to:** post-`v1.5.0` · **Status:** M22 complete at
-`v1.6.0`, M23 complete at `v1.7.0`, M24 complete at `v1.8.0`, M25 complete at `v1.9.0`;
-M26–M27 proposed
+`v1.6.0`, M23 complete at `v1.7.0`, M24 complete at `v1.8.0`, M25 complete at `v1.9.0`,
+M26 complete at `v1.10.0`; M27 proposed
 
 The project is complete and every claim is measured. This plan is about making the same system
 faster and more predictable **without weakening the evidence discipline**: each phase ends in a
@@ -184,6 +184,22 @@ request path.
 **Exit criteria:** cold start and query latency at 34 / 1k / 10k chunks, with the rebuild cost shown
 separately from the query cost. **Explicit non-goal:** no ANN, no quantisation, no vector database
 unless the 10k-chunk curve says the exact scan is the bottleneck.
+
+**Measured at `v1.10.0` — done, append-only.** `results/scale.md` at 34 / 1,053 / 10,053 chunks:
+cold start 66.7 → 1,761 → **13,912 ms**, warm query p50 0.11 → 3.93 → **33.11 ms**, and an ingest
+into a warm view **545 ms at 10k chunks against a 14,770 ms rebuild (27.1×)**. The append is O(new
+chunks) plus BM25's idf sweep over the vocabulary; the rebuild it replaces is O(corpus). WAL is on,
+so the ingest runs while the process serves, and `ATLAS_RELOAD_MS` (default 1000) is how often a
+serving process notices — one cheap signature query per interval per tenant, not per request.
+
+Two limits, both in the report and L21. The append reuses every vector already computed, which is
+also its limit: hashed TF-IDF bakes corpus idf into each row, so the old rows keep the idf they
+were built with. `tests/test_incremental.py` shows the ranking unchanged on the mini corpus, and
+that is one equivalence check, not a proof. And a revised document, a closed revision window or a
+deletion still rebuilds, because none of those can be patched into a posting list — the report
+measures the case M26 actually changes. **On ANN:** query p50 grows 301× for 296× the chunks, so
+the exact scan is linear as predicted; at 33 ms at 10k chunks it is not the bottleneck this
+project's NFRs name, so the non-goal stands and no vector index was added.
 
 ## M27 — The quality experiment: query expansion for FR-17
 

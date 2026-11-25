@@ -109,6 +109,7 @@ def make_handler(state) -> type:
 
         def _answer(self, request: dict) -> None:
             tenant = self.headers.get("X-Tenant", state.settings.default_tenant)
+            state.reload(tenant)  # M26: an ingest in another process, at most once per interval
             try:
                 # M25: an identical question, tenant, mode, date and corpus is answered from
                 # the exact cache; anything else goes through the pipeline unchanged

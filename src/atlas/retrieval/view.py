@@ -57,6 +57,7 @@ class TenantView:
                 set(tokenize(chunk.title)),
                 set(tokenize(chunk.section)),
             )
+        self._features = features  # kept for M26: an extend updates this dict, not a rebuild
         self._reranker.attach_features(features)
         self.mask = WindowMask(self._chunks, self._tokens)
         # M22: the gate reads these caches instead of re-tokenising the winning passage,

@@ -172,6 +172,23 @@ def test_the_date_and_the_mode_are_part_of_the_key(api):
     assert sparse["cache"] == "miss" and sparse["mode"] == "sparse"
 
 
+def test_growth_moves_the_fingerprint_and_the_cache_with_it(api, tmp_path):
+    """M26: an extended view must not keep serving answers keyed on the old corpus."""
+    base_url, state = api
+    first = _ask(base_url, "attendance for every course")
+    assert _ask(base_url, "attendance for every course")["cache"] == "hit"
+    doc = tmp_path / "library-rules.md"
+    doc.write_text(
+        "# Library Rules\n\n## Loans\n\nThe library lends four books for fourteen days.\n",
+        encoding="utf-8",
+    )
+    state.store.upsert_document(tenant_id="campus", path=doc)
+    assert state.index.refresh("campus") == "extend"
+    after = _ask(base_url, "attendance for every course")
+    assert after["cache"] == "miss"
+    assert after["text"] == first["text"]  # the answer is the same; only the key moved
+
+
 def test_metrics_publishes_the_cache_counters(api):
     base_url, _ = api
     _ask(base_url, "attendance policy")

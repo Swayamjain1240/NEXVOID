@@ -69,6 +69,10 @@ perf:
 cache:
 	$(PY) -m bench.cache
 
+# M26: cold start, query and ingest cost at 34 / 1k / 10k chunks
+scale:
+	$(PY) -m bench.scale
+
 # stage-2 layer 2 (M9): injection suite, tenant probes, log audit, degraded mode
 safety:
 	$(PY) -m eval.safety

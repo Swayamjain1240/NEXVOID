@@ -55,6 +55,7 @@ repository is not reproducible, this receipt is the answer.
 | deliberate overload: 84.0% shed at 4 slots, served p95 79.05 ms, liveness 200 throughout | `results/overload.md` |
 | worker processes: 1/2/4 behind one port, p95 24.96 → 5.10 ms, 378 → 587 rps | `results/workers.md` |
 | exact cache: 90.0% hits on a repeat mix, 1.64 ms vs 2.39 ms, tenant and date probes | `results/cache.md` |
+| incremental growth: 34 / 1k / 10k chunks, cold start 66.7 ms → 13.9 s, append 27× cheaper than rebuild | `results/scale.md` |
 | Determinism: the eval command run twice, 0 differences (NFR-15) | `results/determinism.md` |
 
 ### Capacity knobs (M23/M24)
@@ -65,6 +66,7 @@ repository is not reproducible, this receipt is the answer.
 | `ATLAS_MAX_WAITING` | 64 | requests allowed to wait for a slot |
 | `ATLAS_ADMISSION_WAIT_MS` | 25 | how long a waiter waits before `503 OVERLOADED` |
 | `ATLAS_CACHE_SIZE` | 256 | exact-answer cache entries per process; 0 disables it (the load reports set 0) |
+| `ATLAS_RELOAD_MS` | 1000 | how often a serving process checks the store for an ingest; 0 disables the check |
 
 `atlas.cli serve --workers N` runs N processes behind one listening socket (the portable form of
 `SO_REUSEPORT`; Windows has no such option). Each worker has its own store, index, admission bound
