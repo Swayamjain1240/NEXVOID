@@ -1,0 +1,48 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, frozen at M1)",
+    "commit": "286ad22",
+    "regenerate_with": "python -m eval.run_eval"
+  },
+  "row": {
+    "users": 10,
+    "requests": 502740,
+    "served": 502740,
+    "shed": 0,
+    "shed_rate": 0.0,
+    "failures": 0,
+    "wall_seconds": 600.04,
+    "p50_ms": 9.977,
+    "p95_ms": 24.383,
+    "p99_ms": 34.55,
+    "shed_p95_ms": 0.0,
+    "rps": 837.8,
+    "duration_seconds": 600.0,
+    "error_rate": 0.0,
+    "writer_seconds": 20.0,
+    "documents_written": 30,
+    "documents_before": 18,
+    "documents_after": 48,
+    "chunks_after": 124,
+    "write_p95_ms": 33.209,
+    "write_errors": 0,
+    "think_ms": 0.0
+  },
+  "notes": [
+    "- A concurrent writer appended 30 generated documents (one every 20 s) through the production ingest path, taking the corpus 18 -> 48 documents (124 chunks) while every request above was answered.",
+    "- The write side never took the read side with it: ingest p95 33.21 ms, 0 errors. Both connections run WAL (M26), so a write appends beside a reader instead of taking the database lock.",
+    "- The reload is inside this number, not beside it: the server notices a changed corpus signature at most once per `ATLAS_RELOAD_MS` (1000 ms), so a request after an append pays to rebuild the affected view. The canonical soak cannot see that cost at all, because nothing changes under it.",
+    "- The appended documents are generated text over a 300-word vocabulary: they exist to be ingested, not to be answered. This run is a claim about serving through an ingest, not about answer quality.",
+    "- p95 after 10 minutes: 24.38 ms, +6.19 ms against the short-run p95 (18.19 ms). A leak or an unbounded cache would show here as growth.",
+    "- NFR-01 is written at 10 users, and this run is exactly that load held for 10 minutes with no pause between requests: p95 24.38 ms against a 50 ms target at 10 concurrent users. Nothing was shed, so every request offered was answered inside it.",
+    "- Nothing was shed in this run, so the admission bound never became the binding constraint; it is a ceiling, not a throttle on normal traffic.",
+    "- Unlike the burst, this run cannot borrow credit from an idle moment: the threshold holds under sustained load.",
+    "- Error rate 0.000% over 502740 requests; these are",
+    "  dropped connections, and none of them changed an answer's content.",
+    "- The per-tenant view is the only thing that grows with traffic, and it is keyed by",
+    "  tenant, so this run also checks that repeated requests do not accumulate per request.",
+    "- The answer cache is off here (`ATLAS_CACHE_SIZE=0`), so this is the sustained cost of answering every request rather than the cost of repeating one; `results/cache.md` is where a warm cache is measured."
+  ]
+}

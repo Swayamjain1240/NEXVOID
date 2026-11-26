@@ -13,8 +13,17 @@ numbers mean nothing without it:
   agent-threaded stopwatches are GIL-inflated (measured and rejected in M5);
 * every request is a real `GET /v1/ask` answered by the production code path.
 
+M28 adds the writer variant. A soak with no writer measures a server whose corpus never
+changes, which is the one thing a read-mostly service is *not*: an operator ingests. With
+`--writer-seconds` set, a second connection appends a generated document every interval while
+every request is answered, so the M26 reload path - the server noticing a changed corpus
+signature and rebuilding the affected view - runs inside the tail this report measures. It gets
+its own stem (`results/soak-writer.*`) because it answers a different question than the
+canonical soak and must not replace it.
+
 Run:  python -m bench.sweep                          # 1, 10, 50 users -> results/bench.*
       python -m bench.sweep --soak-seconds 1800      # 30-minute soak -> results/soak.*
+      python -m bench.sweep --soak-seconds 600 --writer-seconds 20   # soak + ingest
 """
 
 from __future__ import annotations
@@ -25,6 +34,7 @@ import dataclasses
 import http.client
 import json
 import multiprocessing
+import sqlite3
 import sys
 import tempfile
 import threading
@@ -186,18 +196,91 @@ def sweep(questions: list[str], db: Path, *, levels: tuple[int, ...], per_user: 
     return rows
 
 
-def soak(questions: list[str], db: Path, *, seconds: float, users: int = 10,
-         token: str = "", think_seconds: float = 0.0) -> dict:
-    """Sustained load: the run that finds growth a short burst cannot."""
-    server, port = boot(db)
+def _soak_document(number: int) -> str:
+    """The scale bench's generated policy text, so both reports ingest the same shape."""
+    from bench.scale import synthetic_doc  # late: bench.scale imports build_database from here
+
+    return synthetic_doc(number)
+
+
+def _write_loop(db: Path, interval: float, stop: threading.Event, out: dict) -> None:
+    """Append one document per interval to the live database, as an operator's ingest would.
+
+    Its own connection, because that is what the reload path exists for: the serving process
+    holds a different connection and can only notice the change through the corpus signature.
+    A locked database is recorded as a reading, not raised - this thread must not be able to
+    end the run it is measuring.
+    """
+    store = Store(db)
+    folder = Path(tempfile.mkdtemp())
+    latencies: list[float] = []
+    errors = 0
+    number = 0
     try:
+        while not stop.is_set():
+            path = folder / f"soak-{number:05d}.md"
+            try:
+                path.write_text(_soak_document(number), encoding="utf-8")
+                started = time.perf_counter()
+                store.upsert_document(tenant_id=SETTINGS.default_tenant, path=path)
+                latencies.append((time.perf_counter() - started) * 1000.0)
+                number += 1
+            except (sqlite3.OperationalError, OSError):
+                errors += 1
+            stop.wait(interval)
+    finally:
+        out.update({
+            "documents": number,
+            "errors": errors,
+            "p95_ms": round(percentile(latencies, 95.0), 3) if latencies else None,
+            "stats": store.stats(tenant_id=SETTINGS.default_tenant),
+        })
+        store.close()
+
+
+def soak(questions: list[str], db: Path, *, seconds: float, users: int = 10,
+         token: str = "", think_seconds: float = 0.0, writer_seconds: float = 0.0) -> dict:
+    """Sustained load: the run that finds growth a short burst cannot.
+
+    `writer_seconds` adds the second half of the story (M28): a concurrent writer appending to
+    the same database, so the run covers an ingest happening *while* the service serves.
+    """
+    server, port = boot(db)
+    probe = Store(db)
+    try:
+        before = probe.stats(tenant_id=SETTINGS.default_tenant)
+    finally:
+        probe.close()
+    stop = threading.Event()
+    written: dict = {}
+    writer: threading.Thread | None = None
+    try:
+        if writer_seconds > 0:
+            writer = threading.Thread(
+                target=_write_loop, args=(db, writer_seconds, stop, written), daemon=True
+            )
+            writer.start()
         row = run_load(f"http://127.0.0.1:{port}", questions, users=users,
                        seconds=seconds, token=token, think_seconds=think_seconds)
     finally:
+        stop.set()
+        if writer is not None:
+            writer.join(timeout=30.0)
         server.shutdown()
         server.server_close()
     row["duration_seconds"] = seconds
     row["error_rate"] = round(row["failures"] / row["requests"], 6) if row["requests"] else 0.0
+    if writer_seconds > 0:
+        after = written.get("stats", {})
+        row.update({
+            "writer_seconds": writer_seconds,
+            "documents_written": written.get("documents", 0),
+            "documents_before": before["documents"],
+            "documents_after": after.get("documents"),
+            "chunks_after": after.get("chunks"),
+            "write_p95_ms": written.get("p95_ms"),
+            "write_errors": written.get("errors", 0),
+        })
     return row
 
 
@@ -272,7 +355,11 @@ def write_bench(rows: list[dict], payload: dict, *, stem: str = "bench", label: 
 def write_soak(row: dict, payload: dict) -> None:
     """One report per load model, so an interactive number never overwrites the saturation one."""
     RESULTS.mkdir(exist_ok=True)
-    stem = "soak-interactive" if row.get("think_ms") else "soak"
+    stem = (
+        "soak-writer" if row.get("writer_seconds")
+        else "soak-interactive" if row.get("think_ms")
+        else "soak"
+    )
     (RESULTS / f"{stem}.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
     model = (
         f"{row['think_ms']:.0f} ms think time per user (interactive model)"
@@ -285,6 +372,7 @@ def write_soak(row: dict, payload: dict) -> None:
         f"Command: `python -m bench.sweep --soak-seconds {int(row['duration_seconds'])} "
         f"--users {row['users']}"
         + (f" --think-ms {row['think_ms']:.0f}" if row.get("think_ms") else "")
+        + (f" --writer-seconds {row['writer_seconds']:.0f}" if row.get("writer_seconds") else "")
         + f"` · commit `{payload['provenance']['commit']}`",
         "",
         "| metric | value |",
@@ -300,6 +388,15 @@ def write_soak(row: dict, payload: dict) -> None:
         f"| p99 ms | {row['p99_ms']:.2f} |",
         f"| sustained rps | {row['rps']:.1f} |",
         f"| load model | {model} |",
+        *([] if not row.get("writer_seconds") else [
+            f"| concurrent writer | one document every {row['writer_seconds']:.0f} s |",
+            f"| documents appended | {row['documents_written']} (corpus {row['documents_before']} "
+            f"-> {row['documents_after']} documents, {row['chunks_after']} chunks) |",
+            "| ingest p95 | "
+            + (f"{row['write_p95_ms']:.2f} ms |" if row.get("write_p95_ms") is not None
+               else "- (no successful append) |"),
+            f"| ingest errors | {row['write_errors']} |",
+        ]),
         "",
         "## Interpretation",
         "",
@@ -365,6 +462,14 @@ def notes_for_sweep(rows: list[dict]) -> list[str]:
 def _nfr01_note(row: dict) -> str:
     """NFR-01 is a claim about served traffic, plus the shed rate it was bought with (M23)."""
     target = f"{NFR01_P95_MS:.0f} ms target at {row['users']} concurrent users"
+    if row["users"] != NFR01_USERS:
+        # the target is written at exactly one operating point; a run at another user count
+        # says something about headroom, not about compliance
+        return (
+            f"- NFR-01 is written at {NFR01_USERS} users, and this run holds {row['users']}: p95 "
+            f"{row['p95_ms']:.2f} ms with {row.get('shed', 0)} requests shed, so read it as a "
+            "headroom reading beside the 10-user point, not as a compliance claim."
+        )
     if row.get("think_ms"):
         return (
             f"- NFR-01 is written at {NFR01_USERS} users, and this run holds that load with "
@@ -389,13 +494,33 @@ def _nfr01_note(row: dict) -> str:
 
 
 def notes_for_soak(row: dict, bench_p95: float | None) -> list[str]:
+    writer_notes: list[str] = []
+    if row.get("writer_seconds"):
+        writer_notes = [
+            f"- A concurrent writer appended {row['documents_written']} generated documents "
+            f"(one every {row['writer_seconds']:.0f} s) through the production ingest path, "
+            f"taking the corpus {row['documents_before']} -> {row['documents_after']} documents "
+            f"({row['chunks_after']} chunks) while every request above was answered.",
+            "- The write side never took the read side with it: "
+            + (f"ingest p95 {row['write_p95_ms']:.2f} ms, " if row.get("write_p95_ms") is not None
+               else "no append completed, ")
+            + f"{row['write_errors']} errors. Both connections run WAL (M26), so a write "
+            "appends beside a reader instead of taking the database lock.",
+            "- The reload is inside this number, not beside it: the server notices a changed "
+            "corpus signature at most once per `ATLAS_RELOAD_MS` (1000 ms), so a request after "
+            "an append pays to rebuild the affected view. The canonical soak cannot see that "
+            "cost at all, because nothing changes under it.",
+            "- The appended documents are generated text over a 300-word vocabulary: they exist "
+            "to be ingested, not to be answered. This run is a claim about serving through an "
+            "ingest, not about answer quality.",
+        ]
     drift = (
         f"{row['p95_ms'] - bench_p95:+.2f} ms against the short-run p95 ({bench_p95:.2f} ms)"
         if bench_p95
         else "no short-run comparison available"
     )
     verdict_note = _nfr01_note(row)
-    return [
+    return writer_notes + [
         f"- p95 after {row['duration_seconds'] / 60:.0f} minutes: {row['p95_ms']:.2f} ms, "
         f"{drift}. A leak or an unbounded cache would show here as growth.",
         verdict_note,
@@ -440,6 +565,13 @@ def main() -> int:
         help="pause between one user's requests (0 = saturation test, not an interactive model)",
     )
     parser.add_argument(
+        "--writer-seconds",
+        type=float,
+        default=0.0,
+        help="during the soak, append a generated document every N seconds from a second "
+        "connection (0 = no writer); writes results/soak-writer.*",
+    )
+    parser.add_argument(
         "--render-existing",
         nargs="?",
         const="bench",
@@ -456,12 +588,38 @@ def main() -> int:
     parser.add_argument("--label", default="", help="one-line qualifier for the report title")
     args = parser.parse_args()
 
+    if args.writer_seconds < 0:
+        raise SystemExit("--writer-seconds must be >= 0")
+    if args.writer_seconds and not args.soak_seconds:
+        raise SystemExit(
+            "--writer-seconds needs --soak-seconds: a writer is only meaningful beside a run "
+            "that lasts long enough to ingest through"
+        )
+
     if args.render_existing:
         stem = args.render_existing
         path = RESULTS / f"{stem}.json"
         if not path.exists():
             raise SystemExit(f"no results/{stem}.json to re-render")
         bench_payload = json.loads(path.read_text(encoding="utf-8"))
+        if stem.startswith("soak"):
+            soak_row = bench_payload["row"]
+            bench_file = RESULTS / "bench.json"
+            entry = None
+            if bench_file.exists():
+                published = json.loads(bench_file.read_text(encoding="utf-8"))
+                entry = next(
+                    (item for item in published["rows"]
+                     if item["users"] == soak_row["users"]),
+                    None,
+                )
+            # notes are recomputed, not replayed: the prose is code, the numbers are data
+            bench_payload["notes"] = notes_for_soak(
+                soak_row, entry["p95_ms"] if entry else None
+            )
+            write_soak(soak_row, bench_payload)
+            print(f"re-rendered: results/{stem}.md")
+            return 0
         # notes are recomputed, not replayed: the prose is code, the numbers are data
         bench_payload["notes"] = notes_for_sweep(bench_payload["rows"])
         write_bench(
@@ -474,7 +632,7 @@ def main() -> int:
         if stem != "bench":
             print(f"re-rendered: results/{stem}.md")
             return 0
-        for name in ("soak.json", "soak-interactive.json"):
+        for name in ("soak.json", "soak-interactive.json", "soak-writer.json"):
             soak_path = RESULTS / name
             if not soak_path.exists():
                 continue
@@ -497,14 +655,20 @@ def main() -> int:
     build_database(db)
 
     if args.soak_seconds:
-        print(f"soaking {args.soak_seconds:.0f}s at {args.users} users ...", file=sys.stderr)
+        print(
+            f"soaking {args.soak_seconds:.0f}s at {args.users} users"
+            + (f" with a write every {args.writer_seconds:.0f}s" if args.writer_seconds else "")
+            + " ...",
+            file=sys.stderr,
+        )
         log_path = Path(tempfile.mkdtemp()) / "server.log"
         with (
             open(log_path, "w", encoding="utf-8", buffering=1) as sink,
             contextlib.redirect_stdout(sink),
         ):
             row = soak(questions, db, seconds=args.soak_seconds, users=args.users,
-                       token=args.token, think_seconds=args.think_ms / 1000.0)
+                       token=args.token, think_seconds=args.think_ms / 1000.0,
+                       writer_seconds=args.writer_seconds)
         row["think_ms"] = args.think_ms
         if args.think_ms:
             ceiling = args.users / (args.think_ms / 1000.0)
@@ -531,6 +695,10 @@ def main() -> int:
         write_soak(row, payload)
         print(f"p50 {row['p50_ms']} ms · p95 {row['p95_ms']} ms · p99 {row['p99_ms']} ms · "
               f"{row['rps']} rps · {row['shed']} shed · {row['failures']} failures")
+        if row.get("writer_seconds"):
+            print(f"writer: {row['documents_written']} documents appended, "
+                  f"corpus {row['documents_before']} -> {row['documents_after']}, "
+                  f"ingest p95 {row['write_p95_ms']} ms, {row['write_errors']} errors")
         return 0
 
     levels = tuple(int(level) for level in args.levels.split(","))

@@ -230,6 +230,38 @@ lexically aligned with the corpus. v2 and v4 are unchanged, `make determinism` i
 differences, and the shipped default stays `expansion_threshold = 0.0`: FR-17 remains open, and the
 experiment is recorded as rejected rather than tuned into an adoption.
 
+## M28 — A refusal rate that does not move one question at a time, and a soak with a writer
+
+**Why:** two numbers were being quoted as if they had been measured finely. Refusal accuracy came
+from six unanswerable questions per set, so one question was worth 0.1667 and "v3 0.50 -> 0.67"
+could not tell a fix from a coin flip. And every load report served a corpus that never changed,
+which is the one thing a read-mostly service is *not*: M26 shipped WAL and a reload interval that
+no committed report had exercised while requests were being answered.
+
+**Changes**
+
+- `eval/golden_set_v5.jsonl`: 30 unanswerable questions and no answerable ones - 20 topics the
+  corpus has no word for and 10 near-misses whose words are attested but whose rule is not, each
+  with the corpus counts behind it in a `note`.
+- `eval/holdout.py` reports a 95% interval per rate and a second arm for the vocabulary floor, and
+  prints v5 question by question so a reader can see which rows move.
+- `bench/sweep.py --writer-seconds`: a second connection appends a generated document every
+  interval during a soak, written to `results/soak-writer.*` so it cannot replace the canonical
+  soak.
+
+**Measured at `v1.11.0` — done.** `results/holdout.md`: refusal accuracy at the shipped theta is
+**0.3667 [0.219, 0.545]** on v5, against the 0.5000 the six-question v3 and v4 read - so those
+were optimistic, not merely noisy - and **0.5000 [0.332, 0.668]** with the novelty floor, a 15-of-30
+move rather than one question. One question is now 0.0333. `results/soak-writer.md`: 10 minutes at
+10 users with a write every 20 s - **502,740 requests, 0 shed, 0 failures, p95 24.38 ms** against
+18.19 ms for the short curve - while 30 documents were appended (corpus 18 -> 48 documents, 124
+chunks) at an ingest p95 of **33.21 ms** with 0 errors. The +6.19 ms is the price of serving
+through an ingest, and the reload is inside that tail rather than beside it.
+
+**What it does not settle:** v5 measures the gate more precisely, it does not make it pass - FR-17
+stays open at L1. The writer appends new documents only; a revision, a closed window or a delete
+still rebuilds (L21), and the appended documents exist to be ingested, not answered.
+
 ---
 
 ## Ordering rationale
@@ -242,6 +274,7 @@ experiment is recorded as rejected rather than tuned into an adoption.
 | M25 | removes work entirely | a cache hides a latency bug you have not fixed yet |
 | M26 | scale without a rebuild cliff | only matters once the corpus grows |
 | M27 | closes the last correctness gap | independent of all of the above, so it can go last without blocking |
+| M28 | instruments: a refusal rate with an interval, and a soak that ingests | it adds no work to the request path, but every later claim about either is measured with it |
 
 ## What this plan deliberately does not include
 
