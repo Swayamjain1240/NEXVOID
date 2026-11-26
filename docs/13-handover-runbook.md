@@ -46,7 +46,7 @@ repository is not reproducible, this receipt is the answer.
 | stage-2 encoder delta (dense 0.75 → 1.00, answer rate 0.29 → 0.88) | `results/embeddings.md` |
 | stage-2 reranker, held out by document (0.90, not adopted) | `results/rerank.md` |
 | safety suite: injections, tenant probes, log audit, degraded mode | `results/safety.md` |
-| out-of-sample sets (v2, v3): retrieval generalises, the refusal gate does not | `results/holdout.md` |
+| out-of-sample sets (v2, v3, v4, v5): retrieval generalises, the refusal gate does not | `results/holdout.md` |
 | second refusal signal: v3 0.50 → 0.67, v2 0.17 → 0.33, no answers lost | `results/support.md` |
 | corpus-derived expansion: fitted 2.5, v1 answer 0.96 → 1.00 but v3 refusal 0.67 → 0.50, not adopted | `results/expansion.md` |
 | second session of the same load curve (17.35 ms p95 at 10 users, 219 of 5,000 shed at 50) | `results/bench-second-session.md` |
@@ -86,14 +86,17 @@ answered. A bad numeric value in any of the variables above refuses to start, na
   Sparse still leads by one question (0.9583), which is the amended FR-11 bar and is stated as
   such rather than rounded away.
 - **The refusal gate does not generalise**: theta was fitted to six unanswerable
-  questions, where it scored 1.0000. On the two sets written afterwards it scores
-  **0.1667** (v2) and **0.5000** (v3) - the classes overlap, and no theta in the grid
-  separates them (`results/holdout.md`). Clients should read the `confidence` field
+  questions, where it scored 1.0000. On the sets written afterwards it scores
+  **0.3333** (v2), **0.5000** (v3, v4) and **0.3667** on v5's thirty unanswerable
+  questions - the classes overlap, and no theta in the grid separates them
+  (`results/holdout.md`). v5 is the number to quote: at n=30 one question moves it by 3.3
+  points, and its 95% interval is [0.219, 0.545]. Clients should read the `confidence` field
   rather than treat "answered" as "supported".
 - **The second signal helps, and does not close the gap**: vocabulary novelty lifts v3
-  refusal to **0.6667** and v2 to **0.3333** with no answerable question refused on any set
-  (`results/support.md`, ADR-0008). On six-question sets that is one question each, so read it
-  as "the direction is right", not "refusal works". It cannot see a question whose every word
+  refusal to **0.6667**, v2 to **0.3333** and v5 to **0.5000** with no answerable question
+  refused on any set (`results/support.md`, ADR-0008, `results/holdout.md`). On v5 that is
+  15 of 30 questions, so it is a real move rather than one question; it still leaves half
+  the set answered. It cannot see a question whose every word
   the corpus uses (v3-018, "sports scholarship"), and it dilutes on wordy phrasings (v3-014).
   The floor is fitted to 18 documents / 1,027 terms: a tenant with far fewer documents must
   re-fit it. M17 tried the next rung - word pairs instead of words - on a freshly written v4

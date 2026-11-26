@@ -3,10 +3,10 @@
     "platform": "Windows-11-10.0.26300-SP0",
     "python": "3.12.10",
     "corpus": "corpus/campus (18 documents, frozen at M1)",
-    "commit": "462426e",
+    "commit": "2056574",
     "regenerate_with": "python -m eval.run_eval"
   },
-  "method": "The out-of-sample test FR-11 and the refusal gate needed (M11).\n\nEvery number in `results/ablation.md` and `results/eval_report.md` was measured on the same\n24+6 questions the design was tuned against, so answers like \"refusal accuracy 1.00\" were\nin-sample claims. This harness adds a second, appended set - `eval/golden_set_v2.jsonl`,\n12 answerable and 6 unanswerable questions written after the code was frozen - and uses it\nthe only way a holdout is useful:\n\n    fit on v1, decide on v2.\n\nThree questions are answered here:\n\n1. **Does retrieval generalise?** The five configurations are scored on both sets.\n2. **Does the confidence gate generalise?** Answer rate and refusal accuracy are computed at\n   every theta in the shipped grid for both sets, from confidences measured once.\n3. **Can fusion weights close FR-11?** A small grid of sparse/dense weights is scored on v1\n   only; the best-on-v1 setting is then evaluated on v2 and adopted only if both agree.\n\nThe v1 set is never edited: v2 is a separate file with its own ids. Nothing was chosen by\nlooking at v2, including theta - that is the whole point.\n\n**M13 appends a third set, `eval/golden_set_v3.jsonl`** (12 answerable, 6 unanswerable), because\nv2 has now been read: its refusal failure is public, so tuning against it would be tuning on a\nset whose answers we already know. v3 is written from the corpus after the v2 result was\nrecorded and is scored here for the first time. From M13 onward the decisions in this report are\nread off **v3**, with v1 and v2 kept as the two earlier readings - a fix that only moves v1 and\nv2 is not a fix, and a set that is only ever read once has to stay unread until it is.\n\nOne caveat stated before the numbers: v3 is written by the same person who wrote the code, so it\nis a weaker holdout than a set written by a stranger. It still catches the failure that matters\nhere - a threshold fitted to six questions - because its unanswerable questions were chosen from\ntopics the corpus does not cover, not from the failure mode already known.\n\nWrites `results/holdout.md` and `results/holdout.json`.",
+  "method": "The out-of-sample test FR-11 and the refusal gate needed (M11).\n\nEvery number in `results/ablation.md` and `results/eval_report.md` was measured on the same\n24+6 questions the design was tuned against, so answers like \"refusal accuracy 1.00\" were\nin-sample claims. This harness adds a second, appended set - `eval/golden_set_v2.jsonl`,\n12 answerable and 6 unanswerable questions written after the code was frozen - and uses it\nthe only way a holdout is useful:\n\n    fit on v1, decide on v2.\n\nThree questions are answered here:\n\n1. **Does retrieval generalise?** The five configurations are scored on both sets.\n2. **Does the confidence gate generalise?** Answer rate and refusal accuracy are computed at\n   every theta in the shipped grid for both sets, from confidences measured once.\n3. **Can fusion weights close FR-11?** A small grid of sparse/dense weights is scored on v1\n   only; the best-on-v1 setting is then evaluated on v2 and adopted only if both agree.\n\nThe v1 set is never edited: v2 is a separate file with its own ids. Nothing was chosen by\nlooking at v2, including theta - that is the whole point.\n\n**M13 appends a third set, `eval/golden_set_v3.jsonl`** (12 answerable, 6 unanswerable), because\nv2 has now been read: its refusal failure is public, so tuning against it would be tuning on a\nset whose answers we already know. v3 is written from the corpus after the v2 result was\nrecorded and is scored here for the first time. From M13 onward the decisions in this report are\nread off **v3**, with v1 and v2 kept as the two earlier readings - a fix that only moves v1 and\nv2 is not a fix, and a set that is only ever read once has to stay unread until it is.\n\n**M28 appends `eval/golden_set_v5.jsonl`**: 30 unanswerable questions, no answerable ones, because\nthe gate's problem is not retrieval. Six unanswerable questions per set make one question worth\n0.1667 of refusal accuracy, so \"v3 0.50 -> 0.67\" was a single question and could not tell a fix\nfrom a coin flip. v5 was written from the corpus - twenty topics the corpus has no word for and ten\nnear-misses where the words exist but the rule does not - and its confidences were measured only\nafter the file was written. At 30 questions one question is worth 0.0333, and the gate table below\nnow carries a 95% interval for each rate so that granularity is visible instead of implied.\n\nOne caveat stated before the numbers: v3 is written by the same person who wrote the code, so it\nis a weaker holdout than a set written by a stranger. It still catches the failure that matters\nhere - a threshold fitted to six questions - because its unanswerable questions were chosen from\ntopics the corpus does not cover, not from the failure mode already known.\n\nWrites `results/holdout.md` and `results/holdout.json`.",
   "encoder": "potion-base-8M",
   "sets": {
     "v1": {
@@ -24,6 +24,10 @@
     "v4": {
       "answerable": 12,
       "unanswerable": 6
+    },
+    "v5": {
+      "answerable": 0,
+      "unanswerable": 30
     }
   },
   "configs": {
@@ -589,24 +593,1093 @@
   },
   "confidence": {
     "theta": 0.31,
+    "floor": 0.5,
     "shipped": {
       "v1": {
         "answer_rate": 0.9583,
-        "refusal_accuracy": 0.8333
+        "refusal_accuracy": 0.8333,
+        "answer_ci": {
+          "n": 24,
+          "mean": 0.9583,
+          "ci_low": 0.7976,
+          "ci_high": 0.9926
+        },
+        "refusal_ci": {
+          "n": 6,
+          "mean": 0.8333,
+          "ci_low": 0.4365,
+          "ci_high": 0.9699
+        }
       },
       "v2": {
         "answer_rate": 0.9167,
-        "refusal_accuracy": 0.3333
+        "refusal_accuracy": 0.3333,
+        "answer_ci": {
+          "n": 12,
+          "mean": 0.9167,
+          "ci_low": 0.6461,
+          "ci_high": 0.9851
+        },
+        "refusal_ci": {
+          "n": 6,
+          "mean": 0.3333,
+          "ci_low": 0.0968,
+          "ci_high": 0.7
+        }
       },
       "v3": {
         "answer_rate": 1.0,
-        "refusal_accuracy": 0.5
+        "refusal_accuracy": 0.5,
+        "answer_ci": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "refusal_ci": {
+          "n": 6,
+          "mean": 0.5,
+          "ci_low": 0.1876,
+          "ci_high": 0.8124
+        }
       },
       "v4": {
         "answer_rate": 1.0,
-        "refusal_accuracy": 0.5
+        "refusal_accuracy": 0.5,
+        "answer_ci": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "refusal_ci": {
+          "n": 6,
+          "mean": 0.5,
+          "ci_low": 0.1876,
+          "ci_high": 0.8124
+        }
+      },
+      "v5": {
+        "answer_rate": null,
+        "refusal_accuracy": 0.3667,
+        "answer_ci": {
+          "mean": null,
+          "ci_low": null,
+          "ci_high": null
+        },
+        "refusal_ci": {
+          "n": 30,
+          "mean": 0.3667,
+          "ci_low": 0.2187,
+          "ci_high": 0.5449
+        }
       },
       "theta": 0.31
+    },
+    "with_floor": {
+      "v1": {
+        "answer_rate": 0.9583,
+        "answer_ci": {
+          "n": 24,
+          "mean": 0.9583,
+          "ci_low": 0.7976,
+          "ci_high": 0.9926
+        },
+        "refusal_accuracy": 0.8333,
+        "refusal_ci": {
+          "n": 6,
+          "mean": 0.8333,
+          "ci_low": 0.4365,
+          "ci_high": 0.9699
+        }
+      },
+      "v2": {
+        "answer_rate": 0.9167,
+        "answer_ci": {
+          "n": 12,
+          "mean": 0.9167,
+          "ci_low": 0.6461,
+          "ci_high": 0.9851
+        },
+        "refusal_accuracy": 0.5,
+        "refusal_ci": {
+          "n": 6,
+          "mean": 0.5,
+          "ci_low": 0.1876,
+          "ci_high": 0.8124
+        }
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "answer_ci": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "refusal_accuracy": 0.6667,
+        "refusal_ci": {
+          "n": 6,
+          "mean": 0.6667,
+          "ci_low": 0.3,
+          "ci_high": 0.9032
+        }
+      },
+      "v4": {
+        "answer_rate": 1.0,
+        "answer_ci": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "refusal_accuracy": 0.6667,
+        "refusal_ci": {
+          "n": 6,
+          "mean": 0.6667,
+          "ci_low": 0.3,
+          "ci_high": 0.9032
+        }
+      },
+      "v5": {
+        "answer_rate": null,
+        "answer_ci": {
+          "mean": null,
+          "ci_low": null,
+          "ci_high": null
+        },
+        "refusal_accuracy": 0.5,
+        "refusal_ci": {
+          "n": 30,
+          "mean": 0.5,
+          "ci_low": 0.3315,
+          "ci_high": 0.6685
+        }
+      }
+    },
+    "detail": {
+      "v1": {
+        "answerable": [
+          {
+            "id": "a001",
+            "confidence": 0.427,
+            "novelty": 0.1667,
+            "unseen": [
+              "relaxation"
+            ]
+          },
+          {
+            "id": "a002",
+            "confidence": 0.4038,
+            "novelty": 0.4,
+            "unseen": [
+              "fell",
+              "five",
+              "relaxation",
+              "sixty"
+            ]
+          },
+          {
+            "id": "a003",
+            "confidence": 0.5573,
+            "novelty": 0.125,
+            "unseen": [
+              "keeping"
+            ]
+          },
+          {
+            "id": "a004",
+            "confidence": 0.4857,
+            "novelty": 0.25,
+            "unseen": [
+              "concession",
+              "someone"
+            ]
+          },
+          {
+            "id": "a005",
+            "confidence": 0.4674,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "a006",
+            "confidence": 0.3919,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "a007",
+            "confidence": 0.5343,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "a008",
+            "confidence": 0.4337,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "a009",
+            "confidence": 0.397,
+            "novelty": 0.2,
+            "unseen": [
+              "sign"
+            ]
+          },
+          {
+            "id": "a010",
+            "confidence": 0.5299,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "a011",
+            "confidence": 0.3732,
+            "novelty": 0.25,
+            "unseen": [
+              "erased",
+              "till"
+            ]
+          },
+          {
+            "id": "a012",
+            "confidence": 0.3559,
+            "novelty": 0.25,
+            "unseen": [
+              "different"
+            ]
+          },
+          {
+            "id": "a013",
+            "confidence": 0.4425,
+            "novelty": 0.2,
+            "unseen": [
+              "inside"
+            ]
+          },
+          {
+            "id": "a014",
+            "confidence": 0.4242,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "a015",
+            "confidence": 0.3842,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "a016",
+            "confidence": 0.3136,
+            "novelty": 0.375,
+            "unseen": [
+              "else",
+              "interview",
+              "someone"
+            ]
+          },
+          {
+            "id": "a017",
+            "confidence": 0.3466,
+            "novelty": 0.1818,
+            "unseen": [
+              "better",
+              "job"
+            ]
+          },
+          {
+            "id": "a018",
+            "confidence": 0.5105,
+            "novelty": 0.1667,
+            "unseen": [
+              "allowed"
+            ]
+          },
+          {
+            "id": "a019",
+            "confidence": 0.4572,
+            "novelty": 0.1667,
+            "unseen": [
+              "finish"
+            ]
+          },
+          {
+            "id": "a020",
+            "confidence": 0.493,
+            "novelty": 0.125,
+            "unseen": [
+              "lowest"
+            ]
+          },
+          {
+            "id": "a021",
+            "confidence": 0.3059,
+            "novelty": 0.125,
+            "unseen": [
+              "verify"
+            ]
+          },
+          {
+            "id": "a022",
+            "confidence": 0.4496,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "a023",
+            "confidence": 0.3851,
+            "novelty": 0.1429,
+            "unseen": [
+              "settled"
+            ]
+          },
+          {
+            "id": "a024",
+            "confidence": 0.3594,
+            "novelty": 0.0,
+            "unseen": []
+          }
+        ],
+        "unanswerable": [
+          {
+            "id": "u001",
+            "confidence": 0.3277,
+            "novelty": 0.2,
+            "unseen": [
+              "menu"
+            ]
+          },
+          {
+            "id": "u002",
+            "confidence": 0.2725,
+            "novelty": 0.1667,
+            "unseen": [
+              "bus"
+            ]
+          },
+          {
+            "id": "u003",
+            "confidence": 0.2805,
+            "novelty": 0.4,
+            "unseen": [
+              "head",
+              "now"
+            ]
+          },
+          {
+            "id": "u004",
+            "confidence": 0.2177,
+            "novelty": 0.6667,
+            "unseen": [
+              "password",
+              "wifi"
+            ]
+          },
+          {
+            "id": "u005",
+            "confidence": 0.2994,
+            "novelty": 0.3333,
+            "unseen": [
+              "gym"
+            ]
+          },
+          {
+            "id": "u006",
+            "confidence": 0.2465,
+            "novelty": 0.5,
+            "unseen": [
+              "national",
+              "ranking"
+            ]
+          }
+        ]
+      },
+      "v2": {
+        "answerable": [
+          {
+            "id": "v2-001",
+            "confidence": 0.5475,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v2-002",
+            "confidence": 0.5661,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v2-003",
+            "confidence": 0.4934,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v2-004",
+            "confidence": 0.4236,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v2-005",
+            "confidence": 0.4256,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v2-006",
+            "confidence": 0.5115,
+            "novelty": 0.1111,
+            "unseen": [
+              "weekly"
+            ]
+          },
+          {
+            "id": "v2-007",
+            "confidence": 0.597,
+            "novelty": 0.1,
+            "unseen": [
+              "split"
+            ]
+          },
+          {
+            "id": "v2-008",
+            "confidence": 0.4065,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v2-009",
+            "confidence": 0.4928,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v2-010",
+            "confidence": 0.2975,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v2-011",
+            "confidence": 0.5272,
+            "novelty": 0.1667,
+            "unseen": [
+              "money"
+            ]
+          },
+          {
+            "id": "v2-012",
+            "confidence": 0.6221,
+            "novelty": 0.0,
+            "unseen": []
+          }
+        ],
+        "unanswerable": [
+          {
+            "id": "v2-u01",
+            "confidence": 0.4341,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v2-u02",
+            "confidence": 0.3342,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v2-u03",
+            "confidence": 0.3025,
+            "novelty": 0.2857,
+            "unseen": [
+              "professor",
+              "structure"
+            ]
+          },
+          {
+            "id": "v2-u04",
+            "confidence": 0.2192,
+            "novelty": 0.4,
+            "unseen": [
+              "accreditation",
+              "naac"
+            ]
+          },
+          {
+            "id": "v2-u05",
+            "confidence": 0.4065,
+            "novelty": 0.5,
+            "unseen": [
+              "degree",
+              "duplicate",
+              "graduating"
+            ]
+          },
+          {
+            "id": "v2-u06",
+            "confidence": 0.4078,
+            "novelty": 0.3333,
+            "unseen": [
+              "cleaning",
+              "submitting"
+            ]
+          }
+        ]
+      },
+      "v3": {
+        "answerable": [
+          {
+            "id": "v3-001",
+            "confidence": 0.3647,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v3-002",
+            "confidence": 0.4216,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v3-003",
+            "confidence": 0.5055,
+            "novelty": 0.0833,
+            "unseen": [
+              "allowed"
+            ]
+          },
+          {
+            "id": "v3-004",
+            "confidence": 0.5278,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v3-005",
+            "confidence": 0.4875,
+            "novelty": 0.1429,
+            "unseen": [
+              "shortest"
+            ]
+          },
+          {
+            "id": "v3-006",
+            "confidence": 0.5808,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v3-007",
+            "confidence": 0.4728,
+            "novelty": 0.125,
+            "unseen": [
+              "wrong"
+            ]
+          },
+          {
+            "id": "v3-008",
+            "confidence": 0.6021,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v3-009",
+            "confidence": 0.5646,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v3-010",
+            "confidence": 0.5666,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v3-011",
+            "confidence": 0.5444,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v3-012",
+            "confidence": 0.4437,
+            "novelty": 0.1667,
+            "unseen": [
+              "resolved"
+            ]
+          }
+        ],
+        "unanswerable": [
+          {
+            "id": "v3-013",
+            "confidence": 0.2136,
+            "novelty": 0.6,
+            "unseen": [
+              "fi",
+              "password",
+              "wi"
+            ]
+          },
+          {
+            "id": "v3-014",
+            "confidence": 0.3404,
+            "novelty": 0.4286,
+            "unseen": [
+              "car",
+              "parking",
+              "permit"
+            ]
+          },
+          {
+            "id": "v3-015",
+            "confidence": 0.2903,
+            "novelty": 0.5,
+            "unseen": [
+              "gym",
+              "membership"
+            ]
+          },
+          {
+            "id": "v3-016",
+            "confidence": 0.3048,
+            "novelty": 0.25,
+            "unseen": [
+              "canteen"
+            ]
+          },
+          {
+            "id": "v3-017",
+            "confidence": 0.313,
+            "novelty": 0.5,
+            "unseen": [
+              "duplicate",
+              "identity"
+            ]
+          },
+          {
+            "id": "v3-018",
+            "confidence": 0.4965,
+            "novelty": 0.0,
+            "unseen": []
+          }
+        ]
+      },
+      "v4": {
+        "answerable": [
+          {
+            "id": "v4-001",
+            "confidence": 0.4952,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v4-002",
+            "confidence": 0.6042,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v4-003",
+            "confidence": 0.5232,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v4-004",
+            "confidence": 0.3893,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v4-005",
+            "confidence": 0.5897,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v4-006",
+            "confidence": 0.3712,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v4-007",
+            "confidence": 0.5032,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v4-008",
+            "confidence": 0.4142,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v4-009",
+            "confidence": 0.489,
+            "novelty": 0.1429,
+            "unseen": [
+              "damaging"
+            ]
+          },
+          {
+            "id": "v4-010",
+            "confidence": 0.435,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v4-011",
+            "confidence": 0.504,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v4-012",
+            "confidence": 0.5968,
+            "novelty": 0.0,
+            "unseen": []
+          }
+        ],
+        "unanswerable": [
+          {
+            "id": "v4-013",
+            "confidence": 0.4202,
+            "novelty": 0.1111,
+            "unseen": [
+              "switch"
+            ]
+          },
+          {
+            "id": "v4-014",
+            "confidence": 0.3958,
+            "novelty": 0.5,
+            "unseen": [
+              "degree",
+              "duplicate",
+              "graduation"
+            ]
+          },
+          {
+            "id": "v4-015",
+            "confidence": 0.3745,
+            "novelty": 0.4286,
+            "unseen": [
+              "alumni",
+              "association",
+              "membership"
+            ]
+          },
+          {
+            "id": "v4-016",
+            "confidence": 0.1631,
+            "novelty": 0.6667,
+            "unseen": [
+              "bus",
+              "often",
+              "railway",
+              "run",
+              "shuttle",
+              "station"
+            ]
+          },
+          {
+            "id": "v4-017",
+            "confidence": 0.2549,
+            "novelty": 0.375,
+            "unseen": [
+              "assistant",
+              "hourly",
+              "wage"
+            ]
+          },
+          {
+            "id": "v4-018",
+            "confidence": 0.2246,
+            "novelty": 0.4,
+            "unseen": [
+              "affair",
+              "dean"
+            ]
+          }
+        ]
+      },
+      "v5": {
+        "answerable": [],
+        "unanswerable": [
+          {
+            "id": "v5-001",
+            "confidence": 0.421,
+            "novelty": 0.1667,
+            "unseen": [
+              "laundry"
+            ]
+          },
+          {
+            "id": "v5-002",
+            "confidence": 0.1629,
+            "novelty": 0.75,
+            "unseen": [
+              "pool",
+              "swimming",
+              "weekend"
+            ]
+          },
+          {
+            "id": "v5-003",
+            "confidence": 0.2083,
+            "novelty": 0.5,
+            "unseen": [
+              "teache",
+              "yoga"
+            ]
+          },
+          {
+            "id": "v5-004",
+            "confidence": 0.1796,
+            "novelty": 0.8,
+            "unseen": [
+              "bring",
+              "scooter",
+              "sticker",
+              "vehicle"
+            ]
+          },
+          {
+            "id": "v5-005",
+            "confidence": 0.2798,
+            "novelty": 0.4286,
+            "unseen": [
+              "guest",
+              "house",
+              "tariff"
+            ]
+          },
+          {
+            "id": "v5-006",
+            "confidence": 0.3249,
+            "novelty": 0.2,
+            "unseen": [
+              "photocopying"
+            ]
+          },
+          {
+            "id": "v5-007",
+            "confidence": 0.2914,
+            "novelty": 0.6,
+            "unseen": [
+              "bring",
+              "convocation",
+              "guest"
+            ]
+          },
+          {
+            "id": "v5-008",
+            "confidence": 0.2471,
+            "novelty": 0.6,
+            "unseen": [
+              "convocation",
+              "gown",
+              "rent"
+            ]
+          },
+          {
+            "id": "v5-009",
+            "confidence": 0.4192,
+            "novelty": 0.3333,
+            "unseen": [
+              "club",
+              "funding"
+            ]
+          },
+          {
+            "id": "v5-010",
+            "confidence": 0.2653,
+            "novelty": 0.5,
+            "unseen": [
+              "council",
+              "election",
+              "nomination"
+            ]
+          },
+          {
+            "id": "v5-011",
+            "confidence": 0.2665,
+            "novelty": 0.6,
+            "unseen": [
+              "anti",
+              "harassment",
+              "helpline"
+            ]
+          },
+          {
+            "id": "v5-012",
+            "confidence": 0.4073,
+            "novelty": 0.125,
+            "unseen": [
+              "insurance"
+            ]
+          },
+          {
+            "id": "v5-013",
+            "confidence": 0.3104,
+            "novelty": 0.25,
+            "unseen": [
+              "nss"
+            ]
+          },
+          {
+            "id": "v5-014",
+            "confidence": 0.2887,
+            "novelty": 0.5,
+            "unseen": [
+              "concession",
+              "here",
+              "sibling",
+              "study"
+            ]
+          },
+          {
+            "id": "v5-015",
+            "confidence": 0.3292,
+            "novelty": 0.5,
+            "unseen": [
+              "heater",
+              "install",
+              "winter"
+            ]
+          },
+          {
+            "id": "v5-016",
+            "confidence": 0.3647,
+            "novelty": 0.4,
+            "unseen": [
+              "machine",
+              "washing"
+            ]
+          },
+          {
+            "id": "v5-017",
+            "confidence": 0.3433,
+            "novelty": 0.6,
+            "unseen": [
+              "bring",
+              "furniture",
+              "own"
+            ]
+          },
+          {
+            "id": "v5-018",
+            "confidence": 0.3828,
+            "novelty": 0.4,
+            "unseen": [
+              "children",
+              "daycare"
+            ]
+          },
+          {
+            "id": "v5-019",
+            "confidence": 0.3257,
+            "novelty": 0.2,
+            "unseen": [
+              "locker"
+            ]
+          },
+          {
+            "id": "v5-020",
+            "confidence": 0.3103,
+            "novelty": 0.5,
+            "unseen": [
+              "inside",
+              "smoking"
+            ]
+          },
+          {
+            "id": "v5-021",
+            "confidence": 0.5437,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v5-022",
+            "confidence": 0.5849,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v5-023",
+            "confidence": 0.3408,
+            "novelty": 0.5,
+            "unseen": [
+              "arrange",
+              "education",
+              "partner"
+            ]
+          },
+          {
+            "id": "v5-024",
+            "confidence": 0.3812,
+            "novelty": 0.25,
+            "unseen": [
+              "printing"
+            ]
+          },
+          {
+            "id": "v5-025",
+            "confidence": 0.2664,
+            "novelty": 0.75,
+            "unseen": [
+              "join",
+              "selection",
+              "unit"
+            ]
+          },
+          {
+            "id": "v5-026",
+            "confidence": 0.4338,
+            "novelty": 0.3333,
+            "unseen": [
+              "bill",
+              "rebate"
+            ]
+          },
+          {
+            "id": "v5-027",
+            "confidence": 0.491,
+            "novelty": 0.125,
+            "unseen": [
+              "trip"
+            ]
+          },
+          {
+            "id": "v5-028",
+            "confidence": 0.2927,
+            "novelty": 0.0,
+            "unseen": []
+          },
+          {
+            "id": "v5-029",
+            "confidence": 0.3956,
+            "novelty": 0.3333,
+            "unseen": [
+              "duplicate"
+            ]
+          },
+          {
+            "id": "v5-030",
+            "confidence": 0.3231,
+            "novelty": 0.4,
+            "unseen": [
+              "canteen",
+              "serve"
+            ]
+          }
+        ]
+      }
     },
     "theta_table": [
       {
@@ -626,6 +1699,10 @@
         "v4": {
           "answer_rate": 1.0,
           "refusal_accuracy": 0.1667
+        },
+        "v5": {
+          "answer_rate": null,
+          "refusal_accuracy": 0.0667
         }
       },
       {
@@ -645,6 +1722,10 @@
         "v4": {
           "answer_rate": 1.0,
           "refusal_accuracy": 0.3333
+        },
+        "v5": {
+          "answer_rate": null,
+          "refusal_accuracy": 0.1333
         }
       },
       {
@@ -664,6 +1745,10 @@
         "v4": {
           "answer_rate": 1.0,
           "refusal_accuracy": 0.5
+        },
+        "v5": {
+          "answer_rate": null,
+          "refusal_accuracy": 0.2667
         }
       },
       {
@@ -683,6 +1768,10 @@
         "v4": {
           "answer_rate": 1.0,
           "refusal_accuracy": 0.5
+        },
+        "v5": {
+          "answer_rate": null,
+          "refusal_accuracy": 0.3667
         }
       },
       {
@@ -702,6 +1791,10 @@
         "v4": {
           "answer_rate": 1.0,
           "refusal_accuracy": 0.5
+        },
+        "v5": {
+          "answer_rate": null,
+          "refusal_accuracy": 0.3667
         }
       },
       {
@@ -721,6 +1814,10 @@
         "v4": {
           "answer_rate": 1.0,
           "refusal_accuracy": 0.5
+        },
+        "v5": {
+          "answer_rate": null,
+          "refusal_accuracy": 0.5667
         }
       },
       {
@@ -740,6 +1837,10 @@
         "v4": {
           "answer_rate": 1.0,
           "refusal_accuracy": 0.5
+        },
+        "v5": {
+          "answer_rate": null,
+          "refusal_accuracy": 0.6333
         }
       },
       {
@@ -758,6 +1859,10 @@
         },
         "v4": {
           "answer_rate": 0.9167,
+          "refusal_accuracy": 0.6667
+        },
+        "v5": {
+          "answer_rate": null,
           "refusal_accuracy": 0.6667
         }
       },
@@ -778,6 +1883,10 @@
         "v4": {
           "answer_rate": 0.8333,
           "refusal_accuracy": 0.8333
+        },
+        "v5": {
+          "answer_rate": null,
+          "refusal_accuracy": 0.7667
         }
       }
     ],
@@ -828,6 +1937,18 @@
           "min": 0.163,
           "max": 0.42,
           "mean": 0.306
+        }
+      },
+      "v5": {
+        "answerable": {
+          "min": null,
+          "max": null,
+          "mean": null
+        },
+        "unanswerable": {
+          "min": 0.163,
+          "max": 0.585,
+          "mean": 0.339
         }
       }
     }
@@ -987,6 +2108,10 @@
     "refusal_generalises": false,
     "refusal_generalises_on_v2": false,
     "best_v2_refusal_across_thetas": 0.5,
-    "best_v3_refusal_across_thetas": 0.8333
+    "best_v3_refusal_across_thetas": 0.8333,
+    "best_v4_refusal_across_thetas": 0.8333,
+    "best_v5_refusal_across_thetas": 0.7667,
+    "v5_refused_confidence": 11,
+    "v5_refused_with_floor": 15
   }
 }

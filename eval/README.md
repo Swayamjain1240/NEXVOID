@@ -123,3 +123,24 @@ What v4 changed: the phrase-level signal refused every unanswerable question at 
 and refused half of v1's answerable ones with it, so it was **not adopted** (`results/phrase.md`).
 The set is kept because it is the instrument that refused an appealing-looking signal, and it is
 frozen from here.
+
+## v5, appended (M28) — because six questions cannot measure a rate
+
+`golden_set_v5.jsonl` appends 30 unanswerable questions and no answerable ones (`v5-0NN`). Every
+refusal number so far came from six unanswerable questions per set, so one question was worth
+0.1667 of accuracy and "v3 0.50 -> 0.67" was one row. Twenty of the thirty are topics the corpus
+has no word for (laundry, swimming pool, convocation, insurance, daycare); ten are near-misses
+whose words the corpus does use but whose rule it does not carry (printing credit, duplicate ID,
+mess rebate). Each row carries a `note` naming which, and the counts behind it.
+
+- **v5 is unanswerable-only**, so it has nothing to retrieve: it is absent from the retrieval
+  table and scores only in the gate.
+- **v5 is read once per decision.** Nothing was tuned on it; it was written after the M27
+  expansion result was recorded, and it is frozen from here.
+- **It does not replace v1-v4.** Those remain the sets a fix is adopted on; v5 is the ruler that
+  says how large a fix is, which is the question six-question sets could not answer.
+
+What v5 changed on its first read: refusal accuracy **0.3667** [0.219, 0.545] at the shipped
+theta, against 0.5000 on the six-question v3 and v4 — so those readings were optimistic, not
+merely noisy. With the vocabulary floor it is **0.5000** [0.332, 0.668]. One question is now
+worth 0.0333.
