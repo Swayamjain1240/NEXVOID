@@ -10,20 +10,22 @@ it was not written for retrieval, so its recall column is a check, not a target.
 v5 is the M28 set: 30 unanswerable questions and no answerable ones, written because six
 questions per set made one question worth 0.1667 of refusal accuracy. It scores in the
 gate only, and it is the first set here whose rate does not move one question at a time.
+v6 is its mirror (M29): 30 answerable questions and no unanswerable ones, so a false
+refusal is worth 0.0333 too. The two together price both sides of the gate.
 
 ## Retrieval, all four sets, same configurations
 
-| configuration | v1 recall@10 (95% CI) | v2 recall@10 | v3 recall@10 | v4 recall@10 | v3 p@5 capped | v3 MRR |
-|---|---|---|---|---|---|---|
-| sparse | 0.9583 [0.798, 0.993] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
-| dense | 1.0000 [0.862, 1.000] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.9583 |
-| hybrid (fusion only) | 0.9583 [0.798, 0.993] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.9583 |
-| hybrid + blend | 0.9167 [0.742, 0.977] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
-| hybrid + learned | 0.9583 [0.798, 0.993] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| configuration | v1 recall@10 (95% CI) | v2 recall@10 | v3 recall@10 | v4 recall@10 | v6 recall@10 | v3 p@5 capped | v3 MRR |
+|---|---|---|---|---|---|---|---|
+| sparse | 0.9583 [0.798, 0.993] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| dense | 1.0000 [0.862, 1.000] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.9583 |
+| hybrid (fusion only) | 0.9583 [0.798, 0.993] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.9583 |
+| hybrid + blend | 0.9167 [0.742, 0.977] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| hybrid + learned | 0.9583 [0.798, 0.993] | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
 
 5 of five configurations reach 1.0000 on
-v2, 5 of five on v3 and 5 of five on v4, so all three appended
-sets
+v2, 5 of five on v3, 5 of five on v4 and 5 of five on v6, so all four appended
+answerable sets
 are saturated: they say only that no configuration misses a relevant document on
 questions like these, which are short, factual and single-document - exactly the traffic
 this corpus produces. Neither set can rank the rankers. Their teeth are in the gate, and
@@ -38,6 +40,7 @@ that is where both earn their place.
 | v3 | 0.31 | 1.0000 [0.757, 1.000] | 0.5000 [0.188, 0.812] | 12 | 6 |
 | v4 | 0.31 | 1.0000 [0.757, 1.000] | 0.5000 [0.188, 0.812] | 12 | 6 |
 | v5 | 0.31 | - (no answerable questions) | 0.3667 [0.219, 0.545] | 0 | 30 |
+| v6 | 0.31 | 1.0000 [0.886, 1.000] | - (no unanswerable questions) | 30 | 0 |
 
 ## The same gate with the vocabulary signal
 
@@ -50,6 +53,7 @@ that is where both earn their place.
 | v3 | 1.0000 [0.757, 1.000] | 0.6667 [0.300, 0.903] | +0.1667 |
 | v4 | 1.0000 [0.757, 1.000] | 0.6667 [0.300, 0.903] | +0.1667 |
 | v5 | - (no answerable questions) | 0.5000 [0.332, 0.668] | +0.1333 |
+| v6 | 1.0000 [0.886, 1.000] | - (no unanswerable questions) | - |
 
 On v5 the floor refuses 15 of 30 unanswerable questions where confidence alone refused 11, so the combined decision reads 0.5000 against 0.3667. The 4 it adds are v5-015, v5-017, v5-020, v5-023: several content words absent and confidence still above theta. It cannot touch v5-021, v5-022, where every word is attested and novelty is 0.000 - a rule that counts absent words has nothing to count there, which is exactly the case `results/support.md` calls its blind spot. The signal is real and it is not sufficient: half of v5 is still answered.
 
@@ -104,6 +108,8 @@ One row is 0.0333 of the rate above, which is the point of the set: a change of 
 | v4 | unanswerable | 0.163 | 0.420 | 0.306 |
 | v5 | answerable | - | - | - |
 | v5 | unanswerable | 0.163 | 0.585 | 0.339 |
+| v6 | answerable | 0.342 | 0.687 | 0.547 |
+| v6 | unanswerable | - | - | - |
 
 On v1 the six unanswerable questions all sit below the six weakest answerable ones,
 which is why theta had a clean gap to land in. On v2 they do not: the lowest
@@ -158,6 +164,7 @@ numbers attached.
 - **Refusal generalises:** no on v3 - refusal accuracy 0.8333 on v1, 0.3333 on v2, 0.5000 on v3. Two independent appended sets agree, so
 the v1 figure was in-sample and the gate is the open requirement, not a rounding problem.
 - **v5 narrows the estimate; it does not move the rate.** 0.3667 [0.219, 0.545] on 30 unanswerable questions (11 of 30 refused), against 0.5000 [0.188, 0.812] on the six-question v3 and v4. The point estimate is lower, but the intervals overlap, so the honest reading is a narrower estimate rather than a demonstrated decline: at these n the data are consistent with the gate refusing anywhere from about a fifth to over half of unseen topics. What v5 does rule out is the 0.8333 v1 reported, which sits above its upper bound. With the vocabulary floor it is 0.5000 (15 of 30). The requirement stays open, and the rate no longer moves one question at a time.
+- **v6 measures the other error at the same resolution.** 1.0000 of 30 answerable questions are answered at the shipped theta [0.886, 1.000], so false refusals are 0.0000 [0.000, 0.114] (0 of 30) - one question is 0.0333, the resolution v5 gives the refusal side. With the vocabulary floor 30 of 30 are answered, so that signal's price is stated in the same units as its gain rather than in sixths.
 - **FR-11 on v3:** fusion-only 1.0000 against dense 1.0000 and sparse 1.0000 (+0.0000). Met on v3 as well, with the same saturation caveat.
 
 ## Misses, by set and configuration
@@ -179,6 +186,14 @@ the v1 figure was in-sample and the gate is the open requirement, not a rounding
 - hybrid + learned: none
 
 **v4**
+
+- sparse: none
+- dense: none
+- hybrid (fusion only): none
+- hybrid + blend: none
+- hybrid + learned: none
+
+**v6**
 
 - sparse: none
 - dense: none

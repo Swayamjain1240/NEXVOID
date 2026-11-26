@@ -50,6 +50,13 @@ class ServerState:
         # M25: exact answers for this process; a hit skips retrieval, the gate and extraction
         self.cache = AnswerCache(settings.cache_size)
         self._reloaded: dict[str, float] = {}
+        # M29: what the reload path costs, measured where it runs. Three numbers, because the
+        # path has two different jobs: a cheap signature check (paid about once per interval per
+        # busy tenant) and an actual refresh, which is the only part that grows with the ingest.
+        self.reload_count = 0
+        self.reload_ms_total = 0.0
+        self.reload_samples: list[float] = []
+        self.reload_outcomes: dict[str, int] = {}
 
     def reload(self, tenant_id: str) -> str:
         """Notice an ingest done by another process, at most once per `reload_ms` (M26).
@@ -63,13 +70,44 @@ class ServerState:
         if now - self._reloaded.get(tenant_id, 0.0) < self.settings.reload_ms / 1000.0:
             return "throttled"
         self._reloaded[tenant_id] = now
-        return self.index.refresh(tenant_id)
+        started = time.perf_counter()
+        outcome = self.index.refresh(tenant_id)
+        elapsed = (time.perf_counter() - started) * 1000.0
+        self.reload_count += 1
+        self.reload_ms_total += elapsed
+        self.reload_outcomes[outcome] = self.reload_outcomes.get(outcome, 0) + 1
+        if len(self.reload_samples) < RELOAD_SAMPLES:
+            self.reload_samples.append(elapsed)
+        return outcome
+
+    def reload_stats(self) -> dict:
+        """The reload path's own cost, so a tail can be attributed rather than guessed (M29)."""
+        samples = sorted(self.reload_samples)
+
+        def percentile(share: float) -> float | None:
+            if not samples:
+                return None
+            index = min(len(samples) - 1, int(share / 100.0 * len(samples)))
+            return round(samples[index], 3)
+
+        return {
+            "count": self.reload_count,
+            "sampled": len(samples),
+            "total_ms": round(self.reload_ms_total, 3),
+            "p50_ms": percentile(50.0),
+            "p95_ms": percentile(95.0),
+            "max_ms": round(samples[-1], 3) if samples else None,
+            "outcomes": dict(self.reload_outcomes),
+        }
 
 
 # The stdlib default listen backlog is 5, which drops a burst of connections outright.
 # The M10 load curve measured that as 7 failures at 50 users, so the queue is sized for
 # the operating point the project claims instead of leaving a socket default in charge.
 LISTEN_BACKLOG = 128
+# A long soak reloads a few dozen times; a busy tenant could reload far more often, so the
+# percentile sample is bounded and the count is not. The mean is always exact.
+RELOAD_SAMPLES = 1000
 
 
 def make_server(address: tuple[str, int], state: ServerState) -> ThreadingHTTPServer:

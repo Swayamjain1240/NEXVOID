@@ -145,3 +145,19 @@ theta, against 0.5000 [0.188, 0.812] on the six-question v3 and v4. The point es
 but the intervals overlap, so this is a narrower estimate rather than a demonstrated decline —
 what it does rule out is the 0.8333 v1 reported, which sits above v5's upper bound. With the
 vocabulary floor it is **0.5000** [0.332, 0.668]. One question is now worth 0.0333.
+
+## v6, appended (M29) — the other error, at the same resolution
+
+`golden_set_v6.jsonl` appends 30 answerable questions and no unanswerable ones: every document in
+the corpus is asked about once or twice, with the fact recorded in a `note`. v5 made refusing an
+unseen topic worth 0.0333; a *false* refusal was still read off six-question sets, where one
+question is 0.1667. v6 is the mirror, so both sides of the gate are measured at 3.3 points.
+
+- **v6 is answerable-only**, so it has nothing to refuse: it scores the answer rate (1 minus the
+  false-refusal rate) and takes a column in the retrieval table.
+- **v6 is read once per decision**, written after the v5 result was recorded and frozen here.
+
+What v6 changed on its first read: **30 of 30 answered** at the shipped theta, false refusals
+**0.0000** [0.000, 0.114], and the same 30 of 30 with the vocabulary floor. The gate's error on
+this corpus is therefore entirely on the unseen-topic side, and the earlier "no answerable
+question is refused" claims were six-question claims — which is what v6 replaces.

@@ -34,6 +34,12 @@ near-misses where the words exist but the rule does not - and its confidences we
 after the file was written. At 30 questions one question is worth 0.0333, and the gate table below
 now carries a 95% interval for each rate so that granularity is visible instead of implied.
 
+**M29 appends `eval/golden_set_v6.jsonl`**: 30 answerable questions and no unanswerable ones, the
+mirror of v5. v5 made refusals of unseen topics measurable at 0.0333 per question; the opposite
+error - refusing a question the corpus can answer - was still read off six-question sets, where one
+question is 0.1667. v6 covers all eighteen documents once or twice, and the answer rate it prints
+is 1 minus the false-refusal rate, at the same resolution.
+
 One caveat stated before the numbers: v3 is written by the same person who wrote the code, so it
 is a weaker holdout than a set written by a stranger. It still catches the failure that matters
 here - a threshold fitted to six questions - because its unanswerable questions were chosen from
@@ -68,9 +74,10 @@ V2_PATH = ROOT / "eval" / "golden_set_v2.jsonl"
 V3_PATH = ROOT / "eval" / "golden_set_v3.jsonl"
 V4_PATH = ROOT / "eval" / "golden_set_v4.jsonl"
 V5_PATH = ROOT / "eval" / "golden_set_v5.jsonl"
-SET_LABELS = ("v1", "v2", "v3", "v4", "v5")
+V6_PATH = ROOT / "eval" / "golden_set_v6.jsonl"
+SET_LABELS = ("v1", "v2", "v3", "v4", "v5", "v6")
 # v5 is unanswerable-only (M28), so it has nothing to retrieve: it scores in the gate, not here.
-RETRIEVAL_LABELS = ("v1", "v2", "v3", "v4")
+RETRIEVAL_LABELS = ("v1", "v2", "v3", "v4", "v6")
 ENCODER = "potion-base-8M"  # the shipped encoder; the hashed stand-in is in results/ablation.md
 
 CONFIGS = (
@@ -118,6 +125,10 @@ def load_v4() -> tuple[list[dict], list[dict]]:
 
 def load_v5() -> tuple[list[dict], list[dict]]:
     return load_set(V5_PATH, "v5")
+
+
+def load_v6() -> tuple[list[dict], list[dict]]:
+    return load_set(V6_PATH, "v6")
 
 
 def measure(store, mode: str, overrides: dict, questions: list[dict]) -> dict:
@@ -226,12 +237,14 @@ def main() -> int:
     v3_answerable, v3_unanswerable = load_v3()
     v4_answerable, v4_unanswerable = load_v4()
     v5_answerable, v5_unanswerable = load_v5()
+    v6_answerable, v6_unanswerable = load_v6()
     sets = {
         "v1": (v1_answerable, v1_unanswerable),
         "v2": (v2_answerable, v2_unanswerable),
         "v3": (v3_answerable, v3_unanswerable),
         "v4": (v4_answerable, v4_unanswerable),
         "v5": (v5_answerable, v5_unanswerable),
+        "v6": (v6_answerable, v6_unanswerable),
     }
     store = build_store(SETTINGS.default_tenant)
     try:
@@ -288,7 +301,8 @@ def main() -> int:
         answer_ci = metrics.rate_with_ci(
             [1.0 if value >= theta else 0.0 for value in profile[label]["answerable"]]
         ) if profile[label]["answerable"] else {"mean": None, "ci_low": None, "ci_high": None}
-        refusal_ci = metrics.rate_with_ci(
+        # M29: v6 has no unanswerable questions, so its refusal class is undefined, not 0
+        refusal_ci = rate(
             [1.0 if value < theta else 0.0 for value in profile[label]["unanswerable"]]
         )
         shipped[label] = {
@@ -349,6 +363,10 @@ def main() -> int:
     # v1 is still what the best setting is chosen on; v3 is what decides whether it ships.
     weight_adopted = best_v1["v1"]["mean"] >= shipped_v1 and best_v1["v3"]["mean"] > shipped_v3
     weight_tied = len({round(row["v1"]["mean"], 6) for row in grid}) == 1
+    v6_total = len(sets["v6"][0])
+    v6_answer = shipped["v6"]["answer_rate"]
+    v6_answered = round(v6_answer * v6_total)
+    v6_answered_floor = round(with_floor["v6"]["answer_rate"] * v6_total)
     v2_refusal_best = max(row["v2"]["refusal_accuracy"] for row in table)
     v3_refusal_best = max(row["v3"]["refusal_accuracy"] for row in table)
     v4_refusal_best = max(row["v4"]["refusal_accuracy"] for row in table)
@@ -423,30 +441,35 @@ def main() -> int:
         "v5 is the M28 set: 30 unanswerable questions and no answerable ones, written because six",
         "questions per set made one question worth 0.1667 of refusal accuracy. It scores in the",
         "gate only, and it is the first set here whose rate does not move one question at a time.",
+        "v6 is its mirror (M29): 30 answerable questions and no unanswerable ones, so a false",
+        "refusal is worth 0.0333 too. The two together price both sides of the gate.",
         "",
         "## Retrieval, all four sets, same configurations",
         "",
         "| configuration | v1 recall@10 (95% CI) | v2 recall@10 | v3 recall@10 "
-        "| v4 recall@10 | v3 p@5 capped | v3 MRR |",
-        "|---|---|---|---|---|---|---|",
+        "| v4 recall@10 | v6 recall@10 | v3 p@5 capped | v3 MRR |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for name, block in results.items():
         one, two, three = block["v1"]["recall"], block["v2"]["recall"], block["v3"]["recall"]
-        four = block["v4"]["recall"]
+        four, six = block["v4"]["recall"], block["v6"]["recall"]
         lines.append(
             f"| {name} | {one['mean']:.4f} [{one['ci_low']:.3f}, {one['ci_high']:.3f}] "
             f"| {two['mean']:.4f} | {three['mean']:.4f} | {four['mean']:.4f} "
+            f"| {six['mean']:.4f} "
             f"| {block['v3']['precision5c']['mean']:.4f} | {block['v3']['mrr']['mean']:.4f} |"
         )
     v2_reaches = [block["v2"]["recall"]["mean"] for block in results.values()]
     v3_reaches = [block["v3"]["recall"]["mean"] for block in results.values()]
     v4_reaches = [block["v4"]["recall"]["mean"] for block in results.values()]
+    v6_reaches = [block["v6"]["recall"]["mean"] for block in results.values()]
     lines += [
         "",
         f"{sum(1 for value in v2_reaches if value == 1.0)} of five configurations reach 1.0000 on",
-        f"v2, {sum(1 for value in v3_reaches if value == 1.0)} of five on v3 and "
-        f"{sum(1 for value in v4_reaches if value == 1.0)} of five on v4, so all three appended",
-        "sets",
+        f"v2, {sum(1 for value in v3_reaches if value == 1.0)} of five on v3, "
+        f"{sum(1 for value in v4_reaches if value == 1.0)} of five on v4 and "
+        f"{sum(1 for value in v6_reaches if value == 1.0)} of five on v6, so all four appended",
+        "answerable sets",
         "are saturated: they say only that no configuration misses a relevant document on",
         "questions like these, which are short, factual and single-document - exactly the traffic",
         "this corpus produces. Neither set can rank the rankers. Their teeth are in the gate, and",
@@ -467,8 +490,10 @@ def main() -> int:
             f"| {label} | {theta:.2f} | "
             + (f"{block['answer_rate']:.4f} [{a_ci['ci_low']:.3f}, {a_ci['ci_high']:.3f}] "
                if n_a else "- (no answerable questions) ")
-            + f"| {block['refusal_accuracy']:.4f} "
-            f"[{u_ci['ci_low']:.3f}, {u_ci['ci_high']:.3f}] | {n_a} | {n_u} |"
+            + (f"| {block['refusal_accuracy']:.4f} "
+               f"[{u_ci['ci_low']:.3f}, {u_ci['ci_high']:.3f}] " if n_u
+               else "| - (no unanswerable questions) ")
+            + f"| {n_a} | {n_u} |"
         )
     spreads = payload["confidence"]["spread"]
     lines += [
@@ -496,8 +521,11 @@ def main() -> int:
             f"| {label} | "
             + (f"{block['answer_rate']:.4f} [{a_ci['ci_low']:.3f}, {a_ci['ci_high']:.3f}] "
                if block["answer_rate"] is not None else "- (no answerable questions) ")
-            + f"| {block['refusal_accuracy']:.4f} "
-            f"[{u_ci['ci_low']:.3f}, {u_ci['ci_high']:.3f}] | {delta} |"
+            + (f"| {block['refusal_accuracy']:.4f} "
+               f"[{u_ci['ci_low']:.3f}, {u_ci['ci_high']:.3f}] "
+               if block["refusal_accuracy"] is not None
+               else "| - (no unanswerable questions) ")
+            + f"| {delta} |"
         )
     lines += [
         "",
@@ -641,6 +669,14 @@ def main() -> int:
         f"vocabulary floor it is {with_floor['v5']['refusal_accuracy']:.4f} "
         f"({v5_refused_floor} of 30). The requirement stays open, and the rate no longer moves "
         "one question at a time.",
+        f"- **v6 measures the other error at the same resolution.** {v6_answer:.4f} of "
+        f"{v6_total} answerable questions are answered at the shipped theta "
+        f"[{shipped['v6']['answer_ci']['ci_low']:.3f}, 1.000], so false refusals are "
+        f"{1 - v6_answer:.4f} [0.000, {1 - shipped['v6']['answer_ci']['ci_low']:.3f}] "
+        f"({v6_total - v6_answered} of {v6_total}) - one question is 0.0333, the resolution v5 "
+        f"gives the refusal side. With the vocabulary floor {v6_answered_floor} of {v6_total} "
+        "are answered, so that signal's price is stated in the same units as its gain rather "
+        "than in sixths.",
         f"- **FR-11 on v3:** fusion-only {fusion_v3:.4f} against dense {dense_v3:.4f} and sparse "
         f"{sparse_v3:.4f} ({fusion_v3 - max(dense_v3, sparse_v3):+.4f}). "
         + ("Met on v3 as well, with the same saturation caveat."
@@ -650,7 +686,7 @@ def main() -> int:
         "## Misses, by set and configuration",
         "",
     ]
-    for label in ("v2", "v3", "v4"):
+    for label in ("v2", "v3", "v4", "v6"):
         lines.append(f"**{label}**")
         lines.append("")
         for name, block in results.items():

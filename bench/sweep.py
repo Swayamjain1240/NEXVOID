@@ -77,14 +77,16 @@ def build_database(path: Path) -> None:
         store.close()
 
 
-def boot(db: Path) -> tuple[ThreadingHTTPServer, int]:
+def boot(db: Path) -> tuple[ThreadingHTTPServer, int, ServerState]:
     # M25: the answer cache is off in every load report. These workloads repeat a frozen set of
     # questions, so a warm cache would measure the cache rather than the server; the cache has
     # its own report (`results/cache.md`) and its own workload.
     settings = dataclasses.replace(SETTINGS, cache_size=0)
-    server = make_server(("127.0.0.1", 0), ServerState(str(db), settings=settings))
+    state = ServerState(str(db), settings=settings)
+    server = make_server(("127.0.0.1", 0), state)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    return server, server.server_address[1]
+    # M29: the state comes back so the run can read the reload counters it accumulated.
+    return server, server.server_address[1], state
 
 
 def _worker(host: str, port: int, questions: list[str], token: str, index: int,
@@ -187,7 +189,7 @@ def run_load(base_url: str, questions: list[str], *, users: int, per_user: int =
 def sweep(questions: list[str], db: Path, *, levels: tuple[int, ...], per_user: int,
           token: str = "") -> list[dict]:
     """Every level against one long-lived server, so warm views are warm throughout."""
-    server, port = boot(db)
+    server, port, _ = boot(db)
     try:
         base_url = f"http://127.0.0.1:{port}"
         rows = []
@@ -249,9 +251,26 @@ def _write_loop(db: Path, interval: float, stop: threading.Event, out: dict,
         store.close()
 
 
+def _pregrow(db: Path, count: int) -> None:
+    """Ingest `count` generated documents before the run: a bigger served view, no reload.
+
+    The third arm (M29). It holds the corpus at the size the writer soak reaches, with no ingest
+    happening during the measurement, so its tail is view size and nothing else.
+    """
+    store = Store(db)
+    folder = Path(tempfile.mkdtemp())
+    try:
+        for number in range(count):
+            path = folder / f"pre-{number:05d}.md"
+            path.write_text(_soak_document(number), encoding="utf-8")
+            store.upsert_document(tenant_id=SETTINGS.default_tenant, path=path)
+    finally:
+        store.close()
+
+
 def soak(questions: list[str], db: Path, *, seconds: float, users: int = 10,
          token: str = "", think_seconds: float = 0.0, writer_seconds: float = 0.0,
-         writer_tenant: str = "") -> dict:
+         writer_tenant: str = "", pregrow: int = 0) -> dict:
     """Sustained load: the run that finds growth a short burst cannot.
 
     `writer_seconds` adds the second half of the story (M28): a concurrent writer appending to
@@ -262,7 +281,9 @@ def soak(questions: list[str], db: Path, *, seconds: float, users: int = 10,
     """
     served = SETTINGS.default_tenant
     tenant = writer_tenant or served
-    server, port = boot(db)
+    if pregrow:
+        _pregrow(db, pregrow)
+    server, port, state = boot(db)
     probe = Store(db)
     try:
         before = probe.stats(tenant_id=served)
@@ -289,6 +310,13 @@ def soak(questions: list[str], db: Path, *, seconds: float, users: int = 10,
         server.server_close()
     row["duration_seconds"] = seconds
     row["error_rate"] = round(row["failures"] / row["requests"], 6) if row["requests"] else 0.0
+    # M29: the reload path's own reading, taken from the process that paid for it
+    row["reload"] = state.reload_stats()
+    row["reload_ms_per_request"] = (
+        round(row["reload"]["total_ms"] / row["requests"], 6) if row["requests"] else None
+    )
+    if pregrow:
+        row["pregrown_documents"] = pregrow
     if writer_seconds > 0:
         probe = Store(db)
         try:
@@ -381,7 +409,9 @@ def write_bench(rows: list[dict], payload: dict, *, stem: str = "bench", label: 
 
 
 def soak_stem(row: dict) -> str:
-    """The report a run belongs in; the control can never overwrite the treatment."""
+    """The report a run belongs in; no arm can overwrite another."""
+    if row.get("pregrown_documents"):
+        return "soak-pregrown"
     if row.get("writer_seconds"):
         if row.get("writer_tenant", SETTINGS.default_tenant) != SETTINGS.default_tenant:
             return "soak-writer-control"
@@ -408,6 +438,7 @@ def write_soak(row: dict, payload: dict, *, stem: str = "") -> None:
         + (f" --think-ms {row['think_ms']:.0f}" if row.get("think_ms") else "")
         + (f" --writer-seconds {row['writer_seconds']:.0f}" if row.get("writer_seconds") else "")
         + (f" --writer-tenant {tenant}" if tenant != SETTINGS.default_tenant else "")
+        + (f" --pregrow {row['pregrown_documents']}" if row.get("pregrown_documents") else "")
         + f"` · commit `{payload['provenance']['commit']}`",
         "",
         "| metric | value |",
@@ -423,6 +454,26 @@ def write_soak(row: dict, payload: dict, *, stem: str = "") -> None:
         f"| p99 ms | {row['p99_ms']:.2f} |",
         f"| sustained rps | {row['rps']:.1f} |",
         f"| load model | {model} |",
+        *([] if not row.get("pregrown_documents") else [
+            f"| pre-grown | {row['pregrown_documents']} documents ingested before the run |",
+        ]),
+        # M29: the reload path's own reading, taken where it runs rather than inferred. A run
+        # taken before the counters existed must not print zero - it did not measure them.
+        *([] if not row.get("reload") else [
+            f"| reload calls | {row['reload']['count']} ({row['reload']['outcomes']}) |",
+            f"| reload total | {row['reload']['total_ms']:.2f} ms "
+            f"({row.get('reload_ms_per_request') or 0.0:.6f} ms per request) |",
+            "| reload p50 / p95 / max | "
+            + " / ".join(
+                "-" if value is None else f"{value:.2f}"
+                for value in (
+                    row["reload"]["p50_ms"],
+                    row["reload"]["p95_ms"],
+                    row["reload"]["max_ms"],
+                )
+            )
+            + " ms |",
+        ]),
         *([] if not row.get("writer_seconds") else [
             f"| concurrent writer | one document every {row['writer_seconds']:.0f} s, into "
             f"tenant `{tenant}` |",
@@ -442,7 +493,7 @@ def write_soak(row: dict, payload: dict, *, stem: str = "") -> None:
         "## Interpretation",
         "",
         *payload["notes"],
-        *writer_split_lines(row),
+        *ingest_split_lines(row),
         *other_model_line(row),
         "",
     ]
@@ -535,51 +586,75 @@ def _nfr01_note(row: dict) -> str:
     )
 
 
-def writer_split_lines(row: dict) -> list[str]:
-    """Split a writer soak's tail between the serving tenant's ingest and the writing itself.
-
-    Read off the two committed reports rather than re-run: the treatment changed the served view
-    and the control did not, so the difference between their p95s is what the serving path paid
-    for the ingest. A missing partner report prints nothing instead of guessing.
-    """
-    served = SETTINGS.default_tenant
-    control = row.get("writer_tenant", served) != served
-    partner = "soak-writer" if control else "soak-writer-control"
-    path = RESULTS / f"{partner}.json"
+def _committed_row(stem: str) -> dict | None:
+    """One committed report: soak payloads keep `row`, the load curve keeps `rows`."""
+    path = RESULTS / f"{stem}.json"
     if not path.exists():
+        return None
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return payload.get("row") or payload
+
+
+def ingest_split_lines(row: dict) -> list[str]:
+    """Attribute a soak's tail to view size, writing and the reload path (M29).
+
+    Three arms and one baseline, all committed: the short curve (18 documents, nothing else
+    running), the pre-grown arm (the writer's final corpus, no ingest during the run), the
+    control (18 documents, writes into a tenant nobody reads) and the writer soak. Subtracting
+    the first two arms from the third leaves the reload path, and the server's own counters
+    measure that path directly - so the subtraction has a witness instead of being the whole
+    argument. A missing arm prints nothing rather than guessing.
+    """
+    bench = _committed_row("bench")
+    writer = _committed_row("soak-writer")
+    control = _committed_row("soak-writer-control")
+    pregrown = _committed_row("soak-pregrown")
+    if not (bench and writer and control and pregrown):
         return []
-    other = json.loads(path.read_text(encoding="utf-8")).get("row", {})
-    if not other or other.get("users") != row["users"]:
+    entry = next((item for item in bench["rows"] if item["users"] == row["users"]), None)
+    if entry is None:
         return []
-    if control:
-        control_p95, writer_p95 = row["p95_ms"], other["p95_ms"]
-    else:
-        control_p95, writer_p95 = other["p95_ms"], row["p95_ms"]
-    serving = writer_p95 - control_p95
-    lines = [
+    base = entry["p95_ms"]
+    stats = writer.get("reload", {})
+    outcomes = stats.get("outcomes", {})
+    worked = stats.get("count", 0) - outcomes.get("none", 0) - outcomes.get("missing", 0)
+    per_request = writer.get("reload_ms_per_request") or 0.0
+    view = pregrown["p95_ms"] - base
+    writing = control["p95_ms"] - base
+    total = writer["p95_ms"] - base
+    return [
         "",
-        f"- **The tail splits in two.** The writer soak reads p95 {writer_p95:.2f} ms and the "
-        f"control reads {control_p95:.2f} ms at the same load and the same write rate, so "
-        f"**{serving:+.2f} ms** of the writer soak's tail is the served tenant's ingest - its "
-        "view growing and the reload that notices it - and that is the part a serving process "
-        "actually pays.",
+        "## Where the tail comes from",
+        "",
+        "| arm | what changes under the run | p95 ms | vs short curve |",
+        "|---|---|---|---|",
+        f"| short curve | nothing | {base:.2f} | - |",
+        f"| control | writes into a tenant nobody reads | {control['p95_ms']:.2f} | "
+        f"{writing:+.2f} |",
+        f"| writer | writes into the served tenant, 18 -> 48 documents | "
+        f"{writer['p95_ms']:.2f} | {total:+.2f} |",
+        f"| pre-grown | 48 documents held still, nothing else running | "
+        f"{pregrown['p95_ms']:.2f} | {view:+.2f} |",
+        "",
+        f"- **The reload path is measured, not subtracted.** The writer soak made "
+        f"{stats.get('count', 0)} reload calls for {stats.get('total_ms', 0.0):.0f} ms in total "
+        f"({outcomes}), p50 {stats.get('p50_ms', 0.0):.2f} ms and p95 "
+        f"{stats.get('p95_ms', 0.0):.2f} ms per call, of which {worked} found a changed corpus "
+        f"and did any work. Spread over {writer['requests']} requests that is "
+        f"{per_request:.4f} ms per request: far too small to move a p95, and it does not have "
+        "to be - the requests that trigger a reload are a few dozen out of half a million.",
+        f"- **The bigger served view costs more than the reload does.** The pre-grown arm holds "
+        f"the corpus the writer finishes with, still, and reads {pregrown['p95_ms']:.2f} ms "
+        f"({view:+.2f} over the short curve). The writer soak reads {writer['p95_ms']:.2f} ms, "
+        f"between the control ({control['p95_ms']:.2f}) and that arm - which is what a view "
+        "growing from 18 to 48 documents during the run should look like, because its average "
+        "size is half the final one.",
+        f"- **So:** of the writer soak's {total:+.2f} ms, about {writing:+.2f} ms is writing "
+        f"beside the service and the rest is the larger corpus it is serving; the reload "
+        f"contributes {per_request:.4f} ms per request. M28 reported +3.06 ms as \"the reload "
+        "and the corpus growth\" together; these arms separate them, and the reload is not the "
+        "larger part.",
     ]
-    bench_path = RESULTS / "bench.json"
-    if bench_path.exists():
-        published = json.loads(bench_path.read_text(encoding="utf-8"))
-        entry = next(
-            (item for item in published["rows"] if item["users"] == row["users"]), None
-        )
-        if entry:
-            lines.append(
-                f"- Against the short curve at this level ({entry['p95_ms']:.2f} ms), the writer "
-                f"soak is {writer_p95 - entry['p95_ms']:+.2f} ms: {serving:+.2f} ms of it is the "
-                f"reload and the corpus growth the served view sees, and "
-                f"{control_p95 - entry['p95_ms']:+.2f} ms is the cost of writing at all - WAL, a "
-                "second connection, a larger file - which the control keeps and the reload does "
-                "not."
-            )
-    return lines
 
 
 def notes_for_soak(row: dict, bench_p95: float | None) -> list[str]:
@@ -600,8 +675,9 @@ def notes_for_soak(row: dict, bench_p95: float | None) -> list[str]:
                 f"stayed at {row['documents_after']} documents ({row['chunks_after']} chunks).",
                 "- This is the control for `results/soak-writer.md`, which appended the same "
                 "documents to the served tenant. Here the served view's signature never changed, "
-                "so no request paid for a reload: this p95 keeps the cost of writing at all - "
-                "WAL, a second connection and a larger file - and nothing else.",
+                "so no refresh ever ran: this p95 keeps the cost of writing at all - WAL, a "
+                "second connection and a larger file - plus the signature checks below, and "
+                "nothing else.",
             ]
         else:
             writer_notes = [
@@ -620,11 +696,10 @@ def notes_for_soak(row: dict, bench_p95: float | None) -> list[str]:
         ]
         if not control:
             writer_notes.append(
-                "- The reload is inside this number, not beside it: the server notices a changed "
-                "corpus signature at most once per `ATLAS_RELOAD_MS` (1000 ms), so a request "
-                "after an append pays to rebuild the affected view. "
-                "`results/soak-writer-control.md` is the same run with the writes pointing at a "
-                "tenant nobody reads, which is how much of that tail the reload is."
+                "- The reload path is measured, not inferred: the server times every `refresh()` "
+                "it performs, and the table above carries the count, total and tail of those "
+                "calls. `## Where the tail comes from` puts the view-size arm and the control "
+                "beside this run, so the reload is a line item rather than a remainder."
             )
         writer_notes.append(
             "- The appended documents are generated text over a 300-word vocabulary: they exist "
@@ -637,9 +712,28 @@ def notes_for_soak(row: dict, bench_p95: float | None) -> list[str]:
         else "no short-run comparison available"
     )
     verdict_note = _nfr01_note(row)
+    reload = row.get("reload")
+    if reload is None:
+        reload_line = (
+            "- The reload path was not instrumented when this run was taken, so its cost here is "
+            "unknown rather than zero; `results/soak-writer.md` and "
+            "`results/soak-pregrown.md` carry the counters."
+        )
+    else:
+        outcomes = reload.get("outcomes", {})
+        idle = outcomes.get("none", 0) + outcomes.get("missing", 0)
+        reload_line = (
+            f"- The reload path cost {reload.get('total_ms', 0.0):.2f} ms in "
+            f"{reload.get('count', 0)} calls ({row.get('reload_ms_per_request') or 0.0:.6f} ms "
+            f"per request), outcomes {outcomes}. The {idle} calls that found an unchanged "
+            f"signature are the cheap ones per call (p50 {reload.get('p50_ms') or 0.0:.2f} ms) "
+            f"but they are the frequent ones, so they dominate that total; only "
+            f"{reload.get('count', 0) - idle} of the calls refreshed anything."
+        )
     return writer_notes + [
         f"- p95 after {row['duration_seconds'] / 60:.0f} minutes: {row['p95_ms']:.2f} ms, "
         f"{drift}. A leak or an unbounded cache would show here as growth.",
+        reload_line,
         verdict_note,
         (
             f"- Shedding is fast on purpose: a 503 came back in p95 "
@@ -687,6 +781,14 @@ def main() -> int:
         default=0.0,
         help="during the soak, append a generated document every N seconds from a second "
         "connection (0 = no writer); writes results/soak-writer.*",
+    )
+    parser.add_argument(
+        "--pregrow",
+        type=int,
+        default=0,
+        help="during the soak, ingest N generated documents into the served tenant before the "
+        "run starts: a bigger view with no ingest under load, which is the third arm of the "
+        "M29 split; writes results/soak-pregrown.*",
     )
     parser.add_argument(
         "--writer-tenant",
@@ -758,7 +860,13 @@ def main() -> int:
         if stem != "bench":
             print(f"re-rendered: results/{stem}.md")
             return 0
-        for name in ("soak.json", "soak-interactive.json", "soak-writer.json"):
+        for name in (
+            "soak.json",
+            "soak-interactive.json",
+            "soak-writer.json",
+            "soak-writer-control.json",
+            "soak-pregrown.json",
+        ):
             soak_path = RESULTS / name
             if not soak_path.exists():
                 continue
@@ -795,7 +903,7 @@ def main() -> int:
             row = soak(questions, db, seconds=args.soak_seconds, users=args.users,
                        token=args.token, think_seconds=args.think_ms / 1000.0,
                        writer_seconds=args.writer_seconds,
-                       writer_tenant=args.writer_tenant)
+                       writer_tenant=args.writer_tenant, pregrow=args.pregrow)
         row["think_ms"] = args.think_ms
         if args.think_ms:
             ceiling = args.users / (args.think_ms / 1000.0)

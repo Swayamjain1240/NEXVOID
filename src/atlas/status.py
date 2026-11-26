@@ -35,4 +35,7 @@ def metrics_payload(state) -> dict:
     payload["admission"] = state.admission.snapshot()
     # M25: hits, misses and the rate they imply, so a cache claim is checkable from outside
     payload["cache"] = state.cache.snapshot()
+    # M29: the reload path's count, total and tail, so an ingest's cost is not inferred from a
+    # latency curve that cannot tell a bigger corpus from a rebuild
+    payload["reload"] = state.reload_stats()
     return payload

@@ -25,6 +25,7 @@
   },
   "notes": [
     "- p95 after 15 minutes: 9.89 ms, -8.30 ms against the short-run p95 (18.19 ms). A leak or an unbounded cache would show here as growth.",
+    "- The reload path was not instrumented when this run was taken, so its cost here is unknown rather than zero; `results/soak-writer.md` and `results/soak-pregrown.md` carry the counters.",
     "- NFR-01 is written at 10 users, and this run holds that load with 100 ms of think time per user: p95 9.89 ms against a 50 ms target at 10 concurrent users, and 0 requests were shed, so read strictly NFR-01 passes.",
     "- Nothing was shed in this run, so the admission bound never became the binding constraint; it is a ceiling, not a throttle on normal traffic.",
     "- Unlike the burst, this run cannot borrow credit from an idle moment: the threshold holds under sustained load.",

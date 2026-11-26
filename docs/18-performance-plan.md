@@ -253,20 +253,30 @@ no committed report had exercised while requests were being answered.
 **0.3667 [0.219, 0.545]** on v5, against the 0.5000 [0.188, 0.812] the six-question v3 and v4
 read. The point estimate is lower but the intervals overlap, so v5 narrows the estimate rather
 than demonstrating a decline; **0.5000 [0.332, 0.668]** with the novelty floor is a 15-of-30 move
-rather than one question. One question is now 0.0333. `results/soak-writer.md`: 10 minutes at
-10 users with a write every 20 s - **502,740 requests, 0 shed, 0 failures, p95 24.38 ms** against
-18.19 ms for the short curve - while 30 documents were appended (corpus 18 -> 48 documents, 124
-chunks) at an ingest p95 of **33.21 ms** with 0 errors. The +6.19 ms splits, because
-`results/soak-writer-control.md` repeats the run with the same 30 documents going to a tenant
-nobody reads: p95 **21.32 ms** there, so **+3.06 ms** is the served tenant's ingest - its view
-growing and the reload that notices it - and **+3.13 ms** is the cost of writing at all: WAL, a
-second connection, a larger file. Without the control the two would have been quoted as one
-number, and the reload - the part a serving process actually pays - would have looked twice its
-size.
+rather than one question. One question is now 0.0333, and v6 is the mirror set: 30 answerable questions, **all 30
+answered** at the shipped theta, so false refusals are 0/30 [0, 0.114] - the gate's error is
+entirely on the unseen-topic side, now at 3.3 points instead of a sixth.
 
-**What it does not settle:** v5 measures the gate more precisely, it does not make it pass - FR-17
-stays open at L1. The writer appends new documents only; a revision, a closed window or a delete
-still rebuilds (L21), and the appended documents exist to be ingested, not answered.
+`results/soak-writer.md`: 10 minutes at 10 users with a write every 20 s - **511,751 requests,
+0 shed, 0 failures, p95 23.96 ms** against 18.19 ms for the short curve - while 30 documents were
+appended (corpus 18 -> 48 documents, 124 chunks) at an ingest p95 of 23.94 ms with 0 errors.
+Three arms separate that +5.76 ms. The control (`soak-writer-control`: the same writes into a
+tenant nobody reads) reads **21.62 ms**, so about **+3.43 ms** is writing beside the service. The
+pre-grown arm (`soak-pregrown`: the same 48 documents held still, nothing else running) reads
+**25.24 ms**, so the full view-size term is **+7.05 ms**; the writer soak sits between the two,
+which is what a view averaging half its final size implies. The reload is counted rather than
+inferred: **600 calls, 3,031 ms in total, p50 3.45 ms, p95 13.35 ms, 29 of them doing any work**
+- **0.0059 ms per request**. M28's first reading called +3.06 ms "the reload and the corpus
+growth"; the arms show the growth is the cost and the reload is two orders of magnitude smaller.
+The counters also expose a cost that was invisible before: an *unchanged* signature check costs
+about 3.5 ms, so a busy tenant pays that every second whether or not anyone ingested (L23).
+
+**What it does not settle:** v5 and v6 measure the gate more precisely, they do not make it pass -
+FR-17 stays open at L1, and v6 answers everything, which is a fact about this corpus's answerable
+questions rather than a general claim. The three load arms are one session, and the run-to-run
+noise on p95 is about 1 ms, which is why the reload is quoted from its counters rather than from a
+difference between arms. The writer appends new documents only; a revision, a closed window or a
+delete still rebuilds (L21), and the appended documents exist to be ingested, not answered.
 
 ---
 
