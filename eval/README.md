@@ -141,6 +141,7 @@ mess rebate). Each row carries a `note` naming which, and the counts behind it.
   says how large a fix is, which is the question six-question sets could not answer.
 
 What v5 changed on its first read: refusal accuracy **0.3667** [0.219, 0.545] at the shipped
-theta, against 0.5000 on the six-question v3 and v4 — so those readings were optimistic, not
-merely noisy. With the vocabulary floor it is **0.5000** [0.332, 0.668]. One question is now
-worth 0.0333.
+theta, against 0.5000 [0.188, 0.812] on the six-question v3 and v4. The point estimate is lower,
+but the intervals overlap, so this is a narrower estimate rather than a demonstrated decline —
+what it does rule out is the 0.8333 v1 reported, which sits above v5's upper bound. With the
+vocabulary floor it is **0.5000** [0.332, 0.668]. One question is now worth 0.0333.

@@ -627,16 +627,20 @@ def main() -> int:
         f"{shipped['v2']['refusal_accuracy']:.4f} on v2, "
         f"{shipped['v3']['refusal_accuracy']:.4f} on v3. Two independent appended sets agree, so",
         "the v1 figure was in-sample and the gate is the open requirement, not a rounding problem.",
-        f"- **v5 settles the size of the gap:** {shipped['v5']['refusal_accuracy']:.4f} "
+        f"- **v5 narrows the estimate; it does not move the rate.** "
+        f"{shipped['v5']['refusal_accuracy']:.4f} "
         f"[{shipped['v5']['refusal_ci']['ci_low']:.3f}, "
         f"{shipped['v5']['refusal_ci']['ci_high']:.3f}] "
-        f"on 30 unanswerable questions ({v5_refused_confidence} of 30 refused), against 0.5000 on "
-        "the six-question v3 and v4. The point estimate is *lower* than those two, so the "
-        "six-question readings were optimistic, not merely noisy; the intervals overlap, which is "
-        "the honest way to say the gate refuses roughly a third of unseen topics. With the "
+        f"on 30 unanswerable questions ({v5_refused_confidence} of 30 refused), against 0.5000 "
+        f"[{shipped['v3']['refusal_ci']['ci_low']:.3f}, "
+        f"{shipped['v3']['refusal_ci']['ci_high']:.3f}] on the six-question v3 and v4. The point "
+        "estimate is lower, but the intervals overlap, so the honest reading is a narrower "
+        "estimate rather than a demonstrated decline: at these n the data are consistent with "
+        "the gate refusing anywhere from about a fifth to over half of unseen topics. What v5 "
+        f"does rule out is the 0.8333 v1 reported, which sits above its upper bound. With the "
         f"vocabulary floor it is {with_floor['v5']['refusal_accuracy']:.4f} "
-        f"({v5_refused_floor} of 30). The requirement stays open, and it no longer moves one "
-        "question at a time.",
+        f"({v5_refused_floor} of 30). The requirement stays open, and the rate no longer moves "
+        "one question at a time.",
         f"- **FR-11 on v3:** fusion-only {fusion_v3:.4f} against dense {dense_v3:.4f} and sparse "
         f"{sparse_v3:.4f} ({fusion_v3 - max(dense_v3, sparse_v3):+.4f}). "
         + ("Met on v3 as well, with the same saturation caveat."
