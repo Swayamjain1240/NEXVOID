@@ -24,6 +24,14 @@ canonical soak and must not replace it.
 Run:  python -m bench.sweep                          # 1, 10, 50 users -> results/bench.*
       python -m bench.sweep --soak-seconds 1800      # 30-minute soak -> results/soak.*
       python -m bench.sweep --soak-seconds 600 --writer-seconds 20   # soak + ingest
+      python -m bench.sweep --soak-seconds 600 --writer-seconds 20 \\
+          --writer-tenant campus-control   # the same writes into a tenant nobody reads
+
+The control exists because one number cannot say which half of a tail it is. A writer into the
+served tenant changes that tenant's view, so its requests pay for the reload; a writer into a
+tenant nobody reads changes nothing the served requests look at, so the run keeps the cost of
+writing (WAL, a second connection, a larger file) and loses the corpus growth and the reload.
+The difference between the two reports is the ingest cost the serving path actually pays.
 """
 
 from __future__ import annotations
@@ -203,11 +211,14 @@ def _soak_document(number: int) -> str:
     return synthetic_doc(number)
 
 
-def _write_loop(db: Path, interval: float, stop: threading.Event, out: dict) -> None:
+def _write_loop(db: Path, interval: float, stop: threading.Event, out: dict,
+                tenant: str) -> None:
     """Append one document per interval to the live database, as an operator's ingest would.
 
     Its own connection, because that is what the reload path exists for: the serving process
     holds a different connection and can only notice the change through the corpus signature.
+    `tenant` is the served tenant for the treatment run and a tenant nobody reads for the
+    control, which is the whole difference between them.
     A locked database is recorded as a reading, not raised - this thread must not be able to
     end the run it is measuring.
     """
@@ -222,7 +233,7 @@ def _write_loop(db: Path, interval: float, stop: threading.Event, out: dict) -> 
             try:
                 path.write_text(_soak_document(number), encoding="utf-8")
                 started = time.perf_counter()
-                store.upsert_document(tenant_id=SETTINGS.default_tenant, path=path)
+                store.upsert_document(tenant_id=tenant, path=path)
                 latencies.append((time.perf_counter() - started) * 1000.0)
                 number += 1
             except (sqlite3.OperationalError, OSError):
@@ -233,22 +244,29 @@ def _write_loop(db: Path, interval: float, stop: threading.Event, out: dict) -> 
             "documents": number,
             "errors": errors,
             "p95_ms": round(percentile(latencies, 95.0), 3) if latencies else None,
-            "stats": store.stats(tenant_id=SETTINGS.default_tenant),
+            "stats": store.stats(tenant_id=tenant),
         })
         store.close()
 
 
 def soak(questions: list[str], db: Path, *, seconds: float, users: int = 10,
-         token: str = "", think_seconds: float = 0.0, writer_seconds: float = 0.0) -> dict:
+         token: str = "", think_seconds: float = 0.0, writer_seconds: float = 0.0,
+         writer_tenant: str = "") -> dict:
     """Sustained load: the run that finds growth a short burst cannot.
 
     `writer_seconds` adds the second half of the story (M28): a concurrent writer appending to
     the same database, so the run covers an ingest happening *while* the service serves.
+    `writer_tenant` moves that writer to a tenant nobody reads, which is the control: the
+    served view never changes, so the reload disappears from the tail and only the writing
+    remains.
     """
+    served = SETTINGS.default_tenant
+    tenant = writer_tenant or served
     server, port = boot(db)
     probe = Store(db)
     try:
-        before = probe.stats(tenant_id=SETTINGS.default_tenant)
+        before = probe.stats(tenant_id=served)
+        before_writer = before if tenant == served else probe.stats(tenant_id=tenant)
     finally:
         probe.close()
     stop = threading.Event()
@@ -257,7 +275,8 @@ def soak(questions: list[str], db: Path, *, seconds: float, users: int = 10,
     try:
         if writer_seconds > 0:
             writer = threading.Thread(
-                target=_write_loop, args=(db, writer_seconds, stop, written), daemon=True
+                target=_write_loop, args=(db, writer_seconds, stop, written, tenant),
+                daemon=True,
             )
             writer.start()
         row = run_load(f"http://127.0.0.1:{port}", questions, users=users,
@@ -271,13 +290,22 @@ def soak(questions: list[str], db: Path, *, seconds: float, users: int = 10,
     row["duration_seconds"] = seconds
     row["error_rate"] = round(row["failures"] / row["requests"], 6) if row["requests"] else 0.0
     if writer_seconds > 0:
-        after = written.get("stats", {})
+        probe = Store(db)
+        try:
+            after_served = probe.stats(tenant_id=served)
+        finally:
+            probe.close()
+        after_writer = written.get("stats", {})
         row.update({
             "writer_seconds": writer_seconds,
+            "writer_tenant": tenant,
             "documents_written": written.get("documents", 0),
             "documents_before": before["documents"],
-            "documents_after": after.get("documents"),
-            "chunks_after": after.get("chunks"),
+            "documents_after": after_served["documents"],
+            "chunks_after": after_served["chunks"],
+            "writer_documents_before": before_writer["documents"],
+            "writer_documents_after": after_writer.get("documents"),
+            "writer_chunks_after": after_writer.get("chunks"),
             "write_p95_ms": written.get("p95_ms"),
             "write_errors": written.get("errors", 0),
         })
@@ -352,20 +380,26 @@ def write_bench(rows: list[dict], payload: dict, *, stem: str = "bench", label: 
     (RESULTS / f"{stem}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_soak(row: dict, payload: dict) -> None:
-    """One report per load model, so an interactive number never overwrites the saturation one."""
+def soak_stem(row: dict) -> str:
+    """The report a run belongs in; the control can never overwrite the treatment."""
+    if row.get("writer_seconds"):
+        if row.get("writer_tenant", SETTINGS.default_tenant) != SETTINGS.default_tenant:
+            return "soak-writer-control"
+        return "soak-writer"
+    return "soak-interactive" if row.get("think_ms") else "soak"
+
+
+def write_soak(row: dict, payload: dict, *, stem: str = "") -> None:
+    """One report per load model, so no run can replace a number that answers another question."""
     RESULTS.mkdir(exist_ok=True)
-    stem = (
-        "soak-writer" if row.get("writer_seconds")
-        else "soak-interactive" if row.get("think_ms")
-        else "soak"
-    )
+    stem = stem or soak_stem(row)
     (RESULTS / f"{stem}.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
     model = (
         f"{row['think_ms']:.0f} ms think time per user (interactive model)"
         if row.get("think_ms")
         else "no think time (saturation model: the same users, offering far more load)"
     )
+    tenant = row.get("writer_tenant", SETTINGS.default_tenant)
     lines = [
         f"# Soak — {row['duration_seconds'] / 60:.0f} minutes at {row['users']} users (M10)",
         "",
@@ -373,6 +407,7 @@ def write_soak(row: dict, payload: dict) -> None:
         f"--users {row['users']}"
         + (f" --think-ms {row['think_ms']:.0f}" if row.get("think_ms") else "")
         + (f" --writer-seconds {row['writer_seconds']:.0f}" if row.get("writer_seconds") else "")
+        + (f" --writer-tenant {tenant}" if tenant != SETTINGS.default_tenant else "")
         + f"` · commit `{payload['provenance']['commit']}`",
         "",
         "| metric | value |",
@@ -389,9 +424,15 @@ def write_soak(row: dict, payload: dict) -> None:
         f"| sustained rps | {row['rps']:.1f} |",
         f"| load model | {model} |",
         *([] if not row.get("writer_seconds") else [
-            f"| concurrent writer | one document every {row['writer_seconds']:.0f} s |",
-            f"| documents appended | {row['documents_written']} (corpus {row['documents_before']} "
-            f"-> {row['documents_after']} documents, {row['chunks_after']} chunks) |",
+            f"| concurrent writer | one document every {row['writer_seconds']:.0f} s, into "
+            f"tenant `{tenant}` |",
+            f"| documents appended | {row['documents_written']} |",
+            f"| served corpus | {row['documents_before']} -> {row['documents_after']} documents "
+            f"({row['chunks_after']} chunks) |",
+            f"| writer's tenant | "
+            f"{row.get('writer_documents_before', row['documents_before'])} -> "
+            f"{row.get('writer_documents_after', row['documents_after'])} documents "
+            f"({row.get('writer_chunks_after', row['chunks_after'])} chunks) |",
             "| ingest p95 | "
             + (f"{row['write_p95_ms']:.2f} ms |" if row.get("write_p95_ms") is not None
                else "- (no successful append) |"),
@@ -401,6 +442,7 @@ def write_soak(row: dict, payload: dict) -> None:
         "## Interpretation",
         "",
         *payload["notes"],
+        *writer_split_lines(row),
         *other_model_line(row),
         "",
     ]
@@ -493,27 +535,102 @@ def _nfr01_note(row: dict) -> str:
     )
 
 
+def writer_split_lines(row: dict) -> list[str]:
+    """Split a writer soak's tail between the serving tenant's ingest and the writing itself.
+
+    Read off the two committed reports rather than re-run: the treatment changed the served view
+    and the control did not, so the difference between their p95s is what the serving path paid
+    for the ingest. A missing partner report prints nothing instead of guessing.
+    """
+    served = SETTINGS.default_tenant
+    control = row.get("writer_tenant", served) != served
+    partner = "soak-writer" if control else "soak-writer-control"
+    path = RESULTS / f"{partner}.json"
+    if not path.exists():
+        return []
+    other = json.loads(path.read_text(encoding="utf-8")).get("row", {})
+    if not other or other.get("users") != row["users"]:
+        return []
+    if control:
+        control_p95, writer_p95 = row["p95_ms"], other["p95_ms"]
+    else:
+        control_p95, writer_p95 = other["p95_ms"], row["p95_ms"]
+    serving = writer_p95 - control_p95
+    lines = [
+        "",
+        f"- **The tail splits in two.** The writer soak reads p95 {writer_p95:.2f} ms and the "
+        f"control reads {control_p95:.2f} ms at the same load and the same write rate, so "
+        f"**{serving:+.2f} ms** of the writer soak's tail is the served tenant's ingest - its "
+        "view growing and the reload that notices it - and that is the part a serving process "
+        "actually pays.",
+    ]
+    bench_path = RESULTS / "bench.json"
+    if bench_path.exists():
+        published = json.loads(bench_path.read_text(encoding="utf-8"))
+        entry = next(
+            (item for item in published["rows"] if item["users"] == row["users"]), None
+        )
+        if entry:
+            lines.append(
+                f"- Against the short curve at this level ({entry['p95_ms']:.2f} ms), the writer "
+                f"soak is {writer_p95 - entry['p95_ms']:+.2f} ms: {serving:+.2f} ms of it is the "
+                f"reload and the corpus growth the served view sees, and "
+                f"{control_p95 - entry['p95_ms']:+.2f} ms is the cost of writing at all - WAL, a "
+                "second connection, a larger file - which the control keeps and the reload does "
+                "not."
+            )
+    return lines
+
+
 def notes_for_soak(row: dict, bench_p95: float | None) -> list[str]:
     writer_notes: list[str] = []
     if row.get("writer_seconds"):
-        writer_notes = [
-            f"- A concurrent writer appended {row['documents_written']} generated documents "
-            f"(one every {row['writer_seconds']:.0f} s) through the production ingest path, "
-            f"taking the corpus {row['documents_before']} -> {row['documents_after']} documents "
-            f"({row['chunks_after']} chunks) while every request above was answered.",
+        served = SETTINGS.default_tenant
+        tenant = row.get("writer_tenant", served)
+        control = tenant != served
+        w_before = row.get("writer_documents_before", row["documents_before"])
+        w_after = row.get("writer_documents_after", row["documents_after"])
+        w_chunks = row.get("writer_chunks_after", row["chunks_after"])
+        if control:
+            writer_notes = [
+                f"- A concurrent writer appended {row['documents_written']} generated documents "
+                f"(one every {row['writer_seconds']:.0f} s) through the production ingest path "
+                f"into tenant `{tenant}`, which no request above touched: that tenant went "
+                f"{w_before} -> {w_after} documents ({w_chunks} chunks) while the served corpus "
+                f"stayed at {row['documents_after']} documents ({row['chunks_after']} chunks).",
+                "- This is the control for `results/soak-writer.md`, which appended the same "
+                "documents to the served tenant. Here the served view's signature never changed, "
+                "so no request paid for a reload: this p95 keeps the cost of writing at all - "
+                "WAL, a second connection and a larger file - and nothing else.",
+            ]
+        else:
+            writer_notes = [
+                f"- A concurrent writer appended {row['documents_written']} generated documents "
+                f"(one every {row['writer_seconds']:.0f} s) through the production ingest path "
+                f"into the tenant being served, taking the corpus {row['documents_before']} -> "
+                f"{row['documents_after']} documents ({row['chunks_after']} chunks) while every "
+                "request above was answered.",
+            ]
+        writer_notes += [
             "- The write side never took the read side with it: "
             + (f"ingest p95 {row['write_p95_ms']:.2f} ms, " if row.get("write_p95_ms") is not None
                else "no append completed, ")
             + f"{row['write_errors']} errors. Both connections run WAL (M26), so a write "
             "appends beside a reader instead of taking the database lock.",
-            "- The reload is inside this number, not beside it: the server notices a changed "
-            "corpus signature at most once per `ATLAS_RELOAD_MS` (1000 ms), so a request after "
-            "an append pays to rebuild the affected view. The canonical soak cannot see that "
-            "cost at all, because nothing changes under it.",
+        ]
+        if not control:
+            writer_notes.append(
+                "- The reload is inside this number, not beside it: the server notices a changed "
+                "corpus signature at most once per `ATLAS_RELOAD_MS` (1000 ms), so a request "
+                "after an append pays to rebuild the affected view. "
+                "`results/soak-writer-control.md` is the same run with the writes pointing at a "
+                "tenant nobody reads, which is how much of that tail the reload is."
+            )
+        writer_notes.append(
             "- The appended documents are generated text over a 300-word vocabulary: they exist "
             "to be ingested, not to be answered. This run is a claim about serving through an "
-            "ingest, not about answer quality.",
-        ]
+            "ingest, not about answer quality."
+        )
     drift = (
         f"{row['p95_ms'] - bench_p95:+.2f} ms against the short-run p95 ({bench_p95:.2f} ms)"
         if bench_p95
@@ -572,6 +689,13 @@ def main() -> int:
         "connection (0 = no writer); writes results/soak-writer.*",
     )
     parser.add_argument(
+        "--writer-tenant",
+        default="",
+        help="tenant the soak writer appends to (default: the served tenant). A different "
+        "tenant is the control: the served view never reloads, so the run keeps the cost of "
+        "writing and drops the cost of ingesting into what is being read",
+    )
+    parser.add_argument(
         "--render-existing",
         nargs="?",
         const="bench",
@@ -595,6 +719,8 @@ def main() -> int:
             "--writer-seconds needs --soak-seconds: a writer is only meaningful beside a run "
             "that lasts long enough to ingest through"
         )
+    if args.writer_tenant and not args.writer_seconds:
+        raise SystemExit("--writer-tenant needs --writer-seconds: there is no writer to place")
 
     if args.render_existing:
         stem = args.render_existing
@@ -617,7 +743,7 @@ def main() -> int:
             bench_payload["notes"] = notes_for_soak(
                 soak_row, entry["p95_ms"] if entry else None
             )
-            write_soak(soak_row, bench_payload)
+            write_soak(soak_row, bench_payload, stem=stem)
             print(f"re-rendered: results/{stem}.md")
             return 0
         # notes are recomputed, not replayed: the prose is code, the numbers are data
@@ -668,7 +794,8 @@ def main() -> int:
         ):
             row = soak(questions, db, seconds=args.soak_seconds, users=args.users,
                        token=args.token, think_seconds=args.think_ms / 1000.0,
-                       writer_seconds=args.writer_seconds)
+                       writer_seconds=args.writer_seconds,
+                       writer_tenant=args.writer_tenant)
         row["think_ms"] = args.think_ms
         if args.think_ms:
             ceiling = args.users / (args.think_ms / 1000.0)
@@ -696,9 +823,10 @@ def main() -> int:
         print(f"p50 {row['p50_ms']} ms · p95 {row['p95_ms']} ms · p99 {row['p99_ms']} ms · "
               f"{row['rps']} rps · {row['shed']} shed · {row['failures']} failures")
         if row.get("writer_seconds"):
-            print(f"writer: {row['documents_written']} documents appended, "
-                  f"corpus {row['documents_before']} -> {row['documents_after']}, "
-                  f"ingest p95 {row['write_p95_ms']} ms, {row['write_errors']} errors")
+            print(f"writer: {row['documents_written']} documents appended to "
+                  f"'{row['writer_tenant']}', served corpus {row['documents_before']} -> "
+                  f"{row['documents_after']}, ingest p95 {row['write_p95_ms']} ms, "
+                  f"{row['write_errors']} errors")
         return 0
 
     levels = tuple(int(level) for level in args.levels.split(","))

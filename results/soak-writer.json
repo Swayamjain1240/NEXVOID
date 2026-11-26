@@ -31,9 +31,9 @@
     "think_ms": 0.0
   },
   "notes": [
-    "- A concurrent writer appended 30 generated documents (one every 20 s) through the production ingest path, taking the corpus 18 -> 48 documents (124 chunks) while every request above was answered.",
+    "- A concurrent writer appended 30 generated documents (one every 20 s) through the production ingest path into the tenant being served, taking the corpus 18 -> 48 documents (124 chunks) while every request above was answered.",
     "- The write side never took the read side with it: ingest p95 33.21 ms, 0 errors. Both connections run WAL (M26), so a write appends beside a reader instead of taking the database lock.",
-    "- The reload is inside this number, not beside it: the server notices a changed corpus signature at most once per `ATLAS_RELOAD_MS` (1000 ms), so a request after an append pays to rebuild the affected view. The canonical soak cannot see that cost at all, because nothing changes under it.",
+    "- The reload is inside this number, not beside it: the server notices a changed corpus signature at most once per `ATLAS_RELOAD_MS` (1000 ms), so a request after an append pays to rebuild the affected view. `results/soak-writer-control.md` is the same run with the writes pointing at a tenant nobody reads, which is how much of that tail the reload is.",
     "- The appended documents are generated text over a 300-word vocabulary: they exist to be ingested, not to be answered. This run is a claim about serving through an ingest, not about answer quality.",
     "- p95 after 10 minutes: 24.38 ms, +6.19 ms against the short-run p95 (18.19 ms). A leak or an unbounded cache would show here as growth.",
     "- NFR-01 is written at 10 users, and this run is exactly that load held for 10 minutes with no pause between requests: p95 24.38 ms against a 50 ms target at 10 concurrent users. Nothing was shed, so every request offered was answered inside it.",

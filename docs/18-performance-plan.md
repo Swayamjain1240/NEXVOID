@@ -250,13 +250,19 @@ no committed report had exercised while requests were being answered.
   soak.
 
 **Measured at `v1.11.0` — done.** `results/holdout.md`: refusal accuracy at the shipped theta is
-**0.3667 [0.219, 0.545]** on v5, against the 0.5000 the six-question v3 and v4 read - so those
-were optimistic, not merely noisy - and **0.5000 [0.332, 0.668]** with the novelty floor, a 15-of-30
-move rather than one question. One question is now 0.0333. `results/soak-writer.md`: 10 minutes at
+**0.3667 [0.219, 0.545]** on v5, against the 0.5000 [0.188, 0.812] the six-question v3 and v4
+read. The point estimate is lower but the intervals overlap, so v5 narrows the estimate rather
+than demonstrating a decline; **0.5000 [0.332, 0.668]** with the novelty floor is a 15-of-30 move
+rather than one question. One question is now 0.0333. `results/soak-writer.md`: 10 minutes at
 10 users with a write every 20 s - **502,740 requests, 0 shed, 0 failures, p95 24.38 ms** against
 18.19 ms for the short curve - while 30 documents were appended (corpus 18 -> 48 documents, 124
-chunks) at an ingest p95 of **33.21 ms** with 0 errors. The +6.19 ms is the price of serving
-through an ingest, and the reload is inside that tail rather than beside it.
+chunks) at an ingest p95 of **33.21 ms** with 0 errors. The +6.19 ms splits, because
+`results/soak-writer-control.md` repeats the run with the same 30 documents going to a tenant
+nobody reads: p95 **21.32 ms** there, so **+3.06 ms** is the served tenant's ingest - its view
+growing and the reload that notices it - and **+3.13 ms** is the cost of writing at all: WAL, a
+second connection, a larger file. Without the control the two would have been quoted as one
+number, and the reload - the part a serving process actually pays - would have looked twice its
+size.
 
 **What it does not settle:** v5 measures the gate more precisely, it does not make it pass - FR-17
 stays open at L1. The writer appends new documents only; a revision, a closed window or a delete
