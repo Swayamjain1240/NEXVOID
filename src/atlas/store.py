@@ -150,19 +150,22 @@ class Store:
         ).fetchall()
         return [(row[0], row[1], row[2]) for row in rows]
 
-    def corpus_signature(self, tenant_id: str) -> str:
-        """Cheap change detector for one tenant: its document ids and content hashes (M26).
+    def corpus_version(self, tenant_id: str) -> int:
+        """The tenant's corpus version: one row, moved by any write (M30).
 
-        A running view compares this against the signature it was built from, so an ingest in
-        another process is noticed without polling chunk rows or trusting a file timestamp.
+        M26 asked the same question by re-reading every document id and hashing the set, which
+        cost about 3.5 ms at 18 documents and was paid once per reload interval per busy tenant
+        (`results/soak-pregrown.md`). This is one indexed row read. The triggers in `schema.py`
+        move the counter inside the transaction that changed the corpus, so a reader never sees
+        the new documents beside the old version - and a writer that bypasses this class still
+        moves it.
         """
         if not tenant_id:
             raise TenantError("empty tenant_id")
-        rows = self._conn.execute(
-            "SELECT doc_id, content_hash FROM documents WHERE tenant_id = ? ORDER BY doc_id",
-            (tenant_id,),
-        ).fetchall()
-        return blake2b_hex("\0".join(f"{doc}\0{hash}" for doc, hash in rows), length=16)
+        row = self._conn.execute(
+            "SELECT version FROM corpus_version WHERE tenant_id = ?", (tenant_id,)
+        ).fetchone()
+        return 0 if row is None else int(row[0])
 
     def stats(self, *, tenant_id: str) -> dict[str, int]:
         """{documents: n, chunks: n}; the ingest acceptance check (FR-01) reads this."""

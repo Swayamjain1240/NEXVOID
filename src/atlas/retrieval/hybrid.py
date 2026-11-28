@@ -32,27 +32,31 @@ class HybridIndex:
         self._store = store
         self._settings = settings
         self._views: dict[str, TenantView] = {}
-        # M26: the store signature each view was built from, so an ingest can be noticed
-        self._signatures: dict[str, str] = {}
+        # M30: the corpus version each view was built from, so an ingest can be noticed with
+        # one row read instead of re-hashing every document id (M26's signature)
+        self._versions: dict[str, int] = {}
 
     def invalidate(self, tenant_id: str) -> None:
         """Drop one tenant's view; the next search rebuilds it from the store."""
         self._views.pop(tenant_id, None)
-        self._signatures.pop(tenant_id, None)
+        self._versions.pop(tenant_id, None)
 
     def refresh(self, tenant_id: str) -> str:
         """Pick up an ingest without dropping the view (M26).
 
         "extend" appends chunks that were not there before. "rebuild" is returned when a chunk
         changed its text or revision window, or disappeared, because none of those can be
-        patched into a posting list or a vector row. "none" means the store's signature has not
-        moved, and "missing" means no view was built yet.
+        patched into a posting list or a vector row. "none" means the tenant's corpus version
+        has not moved, and "missing" means no view was built yet.
+
+        The check is one row read (M30). The view is looked up first, so a tenant nobody has
+        asked about costs nothing at all.
         """
-        signature = self._store.corpus_signature(tenant_id)
         view = self._views.get(tenant_id)
         if view is None:
             return "missing"
-        if self._signatures.get(tenant_id) == signature:
+        version = self._store.corpus_version(tenant_id)
+        if self._versions.get(tenant_id) == version:
             return "none"
         chunks = self._store.list_chunks(tenant_id=tenant_id)
         held = view._index_of
@@ -73,7 +77,7 @@ class HybridIndex:
             self._view(tenant_id)
             return "rebuild"
         extend_view(view, [c for c in chunks if c.chunk_id not in held])
-        self._signatures[tenant_id] = signature
+        self._versions[tenant_id] = version
         return "extend"
 
     def corpus_hash(self, tenant_id: str) -> str:
@@ -171,5 +175,5 @@ class HybridIndex:
                 return None
             view = TenantView(chunks, settings=self._settings)
             self._views[tenant_id] = view
-            self._signatures[tenant_id] = self._store.corpus_signature(tenant_id)
+            self._versions[tenant_id] = self._store.corpus_version(tenant_id)
         return view

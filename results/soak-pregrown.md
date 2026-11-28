@@ -1,32 +1,33 @@
 # Soak — 10 minutes at 10 users (M10)
 
-Command: `python -m bench.sweep --soak-seconds 600 --users 10 --pregrow 30` · commit `bef8643`
+Command: `python -m bench.sweep --soak-seconds 600 --users 10 --pregrow 30` · commit `37678d1`
 
 | metric | value |
 |---|---|
 | duration | 600 s |
-| requests | 484334 |
-| served (200) | 484334 |
+| requests | 505129 |
+| served (200) | 505129 |
 | shed (503 OVERLOADED) | 0 (0.00%, p95 0.00 ms) |
 | failures | 0 (0.000%) |
-| p50 ms | 10.34 |
-| p95 ms (served) | 25.24 |
-| p99 ms | 35.63 |
-| sustained rps | 807.2 |
+| p50 ms | 9.72 |
+| p95 ms (served) | 24.67 |
+| p99 ms | 35.16 |
+| sustained rps | 841.9 |
 | load model | no think time (saturation model: the same users, offering far more load) |
 | pre-grown | 30 documents ingested before the run |
+| served corpus | 48 -> 48 documents (124 chunks) |
 | reload calls | 600 ({'missing': 1, 'none': 599}) |
-| reload total | 2915.56 ms (0.006020 ms per request) |
-| reload p50 / p95 / max | 4.40 / 10.87 / 16.81 ms |
+| reload total | 1029.92 ms (0.002039 ms per request) |
+| reload p50 / p95 / max | 1.40 / 4.39 / 6.71 ms |
 
 ## Interpretation
 
-- p95 after 10 minutes: 25.24 ms, +7.05 ms against the short-run p95 (18.19 ms). A leak or an unbounded cache would show here as growth.
-- The reload path cost 2915.56 ms in 600 calls (0.006020 ms per request), outcomes {'missing': 1, 'none': 599}. The 600 calls that found an unchanged signature are the cheap ones per call (p50 4.40 ms) but they are the frequent ones, so they dominate that total; only 0 of the calls refreshed anything.
-- NFR-01 is written at 10 users, and this run is exactly that load held for 10 minutes with no pause between requests: p95 25.24 ms against a 50 ms target at 10 concurrent users. Nothing was shed, so every request offered was answered inside it.
+- p95 after 10 minutes: 24.67 ms, +6.48 ms against the short-run p95 (18.19 ms). A leak or an unbounded cache would show here as growth.
+- The reload path cost 1029.92 ms in 600 calls (0.002039 ms per request), outcomes {'missing': 1, 'none': 599}. The 600 calls that found an unchanged corpus version are cheap per call (p50 1.40 ms) but they are the frequent ones, so they dominate that total; only 0 of the calls refreshed anything.
+- NFR-01 is written at 10 users, and this run is exactly that load held for 10 minutes with no pause between requests: p95 24.67 ms against a 50 ms target at 10 concurrent users. Nothing was shed, so every request offered was answered inside it.
 - Nothing was shed in this run, so the admission bound never became the binding constraint; it is a ceiling, not a throttle on normal traffic.
 - Unlike the burst, this run cannot borrow credit from an idle moment: the threshold holds under sustained load.
-- Error rate 0.000% over 484334 requests; these are
+- Error rate 0.000% over 505129 requests; these are
   dropped connections, and none of them changed an answer's content.
 - The per-tenant view is the only thing that grows with traffic, and it is keyed by
   tenant, so this run also checks that repeated requests do not accumulate per request.
@@ -37,13 +38,14 @@ Command: `python -m bench.sweep --soak-seconds 600 --users 10 --pregrow 30` · c
 | arm | what changes under the run | p95 ms | vs short curve |
 |---|---|---|---|
 | short curve | nothing | 18.19 | - |
-| control | writes into a tenant nobody reads | 21.62 | +3.43 |
-| writer | writes into the served tenant, 18 -> 48 documents | 23.95 | +5.76 |
-| pre-grown | 48 documents held still, nothing else running | 25.24 | +7.05 |
+| control | writes into a tenant nobody reads | 28.18 | +9.98 |
+| writer | writes into the served tenant, 18 -> 48 documents | 23.70 | +5.51 |
+| pre-grown | 48 documents held still, nothing else running | 24.67 | +6.48 |
 
-- **The reload path is measured, not subtracted.** The writer soak made 600 reload calls for 3031 ms in total ({'missing': 1, 'none': 570, 'extend': 29}), p50 3.45 ms and p95 13.35 ms per call, of which 29 found a changed corpus and did any work. Spread over 511751 requests that is 0.0059 ms per request: far too small to move a p95, and it does not have to be - the requests that trigger a reload are a few dozen out of half a million.
-- **The bigger served view costs more than the reload does.** The pre-grown arm holds the corpus the writer finishes with, still, and reads 25.24 ms (+7.05 over the short curve). The writer soak reads 23.95 ms, between the control (21.62) and that arm - which is what a view growing from 18 to 48 documents during the run should look like, because its average size is half the final one.
-- **So:** of the writer soak's +5.76 ms, about +3.43 ms is writing beside the service and the rest is the larger corpus it is serving; the reload contributes 0.0059 ms per request. M28 reported +3.06 ms as "the reload and the corpus growth" together; these arms separate them, and the reload is not the larger part.
+- **The reload path is measured, not subtracted.** The writer soak made 600 reload calls for 1793 ms in total ({'missing': 1, 'none': 570, 'extend': 29}), p50 1.46 ms and p95 8.58 ms per call, of which 29 found a changed corpus and did any work. Spread over 536115 requests that is 0.0033 ms per request: far too small to move a p95, and it does not have to be - the requests that trigger a reload are a few dozen out of half a million.
+- **The ordering the split needs did not hold in this session.** Control 28.18 ms (+9.98 over the short curve), writer 23.70 (+5.51), pre-grown 24.67 (+6.48): a spread of 4.48 ms across the three arms.
+- The M29 session read the same arms at 21.62, 23.96 and 25.24 ms, so between the two sessions the control moved +6.55 ms while writer and pre-grown moved -0.26 and -0.57. The control's throughput here is 761 rps against the writer's 894 (15% lower), which is that arm meeting a slower host for its ten minutes rather than 9.98 ms of work, and it is larger than the effect the arm was built to measure. Both sessions are on one desktop under its own load (L13).
+- **So no split is claimed.** The control reads +9.98 ms over the short curve where M29 read +3.43, and it lands above the writer rather than below it, so writing and view size are not separable at the noise level: the writer soak's +5.51 ms is a bracket set by arms that differ by 4.48 ms, not a decomposition of it. What is measured independently of the arms is the reload path - 0.0033 ms per request over 600 counted calls, with its own total, p50 and tail above. M28's +3.06 ms "reload and corpus growth" therefore still has one unattributed part: the reload is counted and two orders of magnitude too small to be it; what is left is ingestion plus a larger view, which these arms cannot divide.
 
 - The other load model is committed beside this one: `results/soak-interactive.json` reports p95 9.89 ms at 10 users with 100 ms think time. The two answer different questions - headroom versus user traffic - and neither replaces the other.
 

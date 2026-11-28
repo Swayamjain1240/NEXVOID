@@ -317,20 +317,22 @@ def soak(questions: list[str], db: Path, *, seconds: float, users: int = 10,
     )
     if pregrow:
         row["pregrown_documents"] = pregrow
+    # M30: the served corpus is recorded for every arm, not just the ones with a writer. A
+    # pre-grown run has to report the size it actually served, not only what was ingested into it.
+    probe = Store(db)
+    try:
+        after_served = probe.stats(tenant_id=served)
+    finally:
+        probe.close()
+    row["documents_before"] = before["documents"]
+    row["documents_after"] = after_served["documents"]
+    row["chunks_after"] = after_served["chunks"]
     if writer_seconds > 0:
-        probe = Store(db)
-        try:
-            after_served = probe.stats(tenant_id=served)
-        finally:
-            probe.close()
         after_writer = written.get("stats", {})
         row.update({
             "writer_seconds": writer_seconds,
             "writer_tenant": tenant,
             "documents_written": written.get("documents", 0),
-            "documents_before": before["documents"],
-            "documents_after": after_served["documents"],
-            "chunks_after": after_served["chunks"],
             "writer_documents_before": before_writer["documents"],
             "writer_documents_after": after_writer.get("documents"),
             "writer_chunks_after": after_writer.get("chunks"),
@@ -457,6 +459,10 @@ def write_soak(row: dict, payload: dict, *, stem: str = "") -> None:
         *([] if not row.get("pregrown_documents") else [
             f"| pre-grown | {row['pregrown_documents']} documents ingested before the run |",
         ]),
+        *([] if "documents_after" not in row else [
+            f"| served corpus | {row['documents_before']} -> {row['documents_after']} documents "
+            f"({row['chunks_after']} chunks) |",
+        ]),
         # M29: the reload path's own reading, taken where it runs rather than inferred. A run
         # taken before the counters existed must not print zero - it did not measure them.
         *([] if not row.get("reload") else [
@@ -478,8 +484,6 @@ def write_soak(row: dict, payload: dict, *, stem: str = "") -> None:
             f"| concurrent writer | one document every {row['writer_seconds']:.0f} s, into "
             f"tenant `{tenant}` |",
             f"| documents appended | {row['documents_written']} |",
-            f"| served corpus | {row['documents_before']} -> {row['documents_after']} documents "
-            f"({row['chunks_after']} chunks) |",
             f"| writer's tenant | "
             f"{row.get('writer_documents_before', row['documents_before'])} -> "
             f"{row.get('writer_documents_after', row['documents_after'])} documents "
@@ -586,6 +590,12 @@ def _nfr01_note(row: dict) -> str:
     )
 
 
+# The M29 session's three arms, on the same host and corpus sizes, before M30 replaced the
+# signature re-hash with a counter. Kept so a later rendering can say how far the same arm moves
+# between sessions: it is the size of the noise the split has to survive.
+PRIOR_ARMS = {"control": 21.62, "writer": 23.96, "pregrown": 25.24}
+
+
 def _committed_row(stem: str) -> dict | None:
     """One committed report: soak payloads keep `row`, the load curve keeps `rows`."""
     path = RESULTS / f"{stem}.json"
@@ -622,6 +632,37 @@ def ingest_split_lines(row: dict) -> list[str]:
     view = pregrown["p95_ms"] - base
     writing = control["p95_ms"] - base
     total = writer["p95_ms"] - base
+    arms = {
+        "control": control["p95_ms"],
+        "writer": writer["p95_ms"],
+        "pregrown": pregrown["p95_ms"],
+    }
+    spread = max(arms.values()) - min(arms.values())
+    ordered = writing < total < view
+    moved = {name: value - PRIOR_ARMS[name] for name, value in arms.items()}
+    rps_gap = (writer["rps"] - control["rps"]) / writer["rps"] * 100
+    if ordered:
+        verdict = (
+            f"- **So, in this session:** of the writer soak's {total:+.2f} ms, about "
+            f"{writing:+.2f} ms is writing beside the service and the rest is the larger view it "
+            f"serves - the writer sits between the control and the pre-grown arm, as in M29. "
+            f"That is one session per arm, and one arm moves {abs(moved['control']):.2f} ms "
+            f"between sessions (below), so read the split as indicative and the reload figure "
+            f"({per_request:.4f} ms per request, counted) as measured."
+        )
+    else:
+        verdict = (
+            f"- **So no split is claimed.** The control reads {writing:+.2f} ms over the short "
+            f"curve where M29 read {PRIOR_ARMS['control'] - base:+.2f}, and it lands above the "
+            f"writer rather than below it, so writing and view size are not separable at the noise "
+            f"level: the writer soak's {total:+.2f} ms is a bracket set by arms that differ by "
+            f"{spread:.2f} ms, not a decomposition of it. What is measured independently of the "
+            f"arms is the reload path - {per_request:.4f} ms per request over "
+            f"{stats.get('count', 0)} counted calls, with its own total, p50 and tail above. M28's "
+            f"+3.06 ms \"reload and corpus growth\" therefore still has one unattributed part: the "
+            f"reload is counted and two orders of magnitude too small to be it; what is left is "
+            f"ingestion plus a larger view, which these arms cannot divide."
+        )
     return [
         "",
         "## Where the tail comes from",
@@ -643,17 +684,23 @@ def ingest_split_lines(row: dict) -> list[str]:
         f"and did any work. Spread over {writer['requests']} requests that is "
         f"{per_request:.4f} ms per request: far too small to move a p95, and it does not have "
         "to be - the requests that trigger a reload are a few dozen out of half a million.",
-        f"- **The bigger served view costs more than the reload does.** The pre-grown arm holds "
-        f"the corpus the writer finishes with, still, and reads {pregrown['p95_ms']:.2f} ms "
-        f"({view:+.2f} over the short curve). The writer soak reads {writer['p95_ms']:.2f} ms, "
-        f"between the control ({control['p95_ms']:.2f}) and that arm - which is what a view "
-        "growing from 18 to 48 documents during the run should look like, because its average "
-        "size is half the final one.",
-        f"- **So:** of the writer soak's {total:+.2f} ms, about {writing:+.2f} ms is writing "
-        f"beside the service and the rest is the larger corpus it is serving; the reload "
-        f"contributes {per_request:.4f} ms per request. M28 reported +3.06 ms as \"the reload "
-        "and the corpus growth\" together; these arms separate them, and the reload is not the "
-        "larger part.",
+        (
+            f"- **The ordering the split needs {'held' if ordered else 'did not hold'} in this "
+            f"session.** Control {control['p95_ms']:.2f} ms ({writing:+.2f} over the short curve), "
+            f"writer {writer['p95_ms']:.2f} ({total:+.2f}), pre-grown {pregrown['p95_ms']:.2f} "
+            f"({view:+.2f}): a spread of {spread:.2f} ms across the three arms."
+        ),
+        (
+            f"- The M29 session read the same arms at {PRIOR_ARMS['control']:.2f}, "
+            f"{PRIOR_ARMS['writer']:.2f} and {PRIOR_ARMS['pregrown']:.2f} ms, so between the two "
+            f"sessions the control moved {moved['control']:+.2f} ms while writer and pre-grown "
+            f"moved {moved['writer']:+.2f} and {moved['pregrown']:+.2f}. The control's throughput "
+            f"here is {control['rps']:.0f} rps against the writer's {writer['rps']:.0f} "
+            f"({rps_gap:.0f}% lower), which is that arm meeting a slower host for its ten minutes "
+            f"rather than {abs(writing):.2f} ms of work, and it is larger than the effect the arm "
+            f"was built to measure. Both sessions are on one desktop under its own load (L13)."
+        ),
+        verdict,
     ]
 
 
@@ -674,11 +721,21 @@ def notes_for_soak(row: dict, bench_p95: float | None) -> list[str]:
                 f"{w_before} -> {w_after} documents ({w_chunks} chunks) while the served corpus "
                 f"stayed at {row['documents_after']} documents ({row['chunks_after']} chunks).",
                 "- This is the control for `results/soak-writer.md`, which appended the same "
-                "documents to the served tenant. Here the served view's signature never changed, "
-                "so no refresh ever ran: this p95 keeps the cost of writing at all - WAL, a "
-                "second connection and a larger file - plus the signature checks below, and "
+                "documents to the served tenant. Here the served view's corpus version never "
+                "changed, so no refresh ever ran: this p95 keeps the cost of writing at all - "
+                "WAL, a second connection and a larger file - plus the version checks below, and "
                 "nothing else.",
             ]
+            served_soak = _committed_row("soak-writer") or {}
+            if served_soak.get("p95_ms", 0.0) < row["p95_ms"]:
+                writer_notes.append(
+                    f"- This arm read *above* the writer soak ({row['p95_ms']:.2f} ms against "
+                    f"{served_soak['p95_ms']:.2f}) with a throughput of {row['rps']:.0f} rps "
+                    f"against {served_soak['rps']:.0f}, which is the host being slower for these "
+                    f"ten minutes rather than a cost of writing into an unread tenant. A "
+                    f"difference that should be one-directional cannot be read from one session: "
+                    f"`results/soak-writer.md` sizes both sessions against each other."
+                )
         else:
             writer_notes = [
                 f"- A concurrent writer appended {row['documents_written']} generated documents "
@@ -726,7 +783,7 @@ def notes_for_soak(row: dict, bench_p95: float | None) -> list[str]:
             f"- The reload path cost {reload.get('total_ms', 0.0):.2f} ms in "
             f"{reload.get('count', 0)} calls ({row.get('reload_ms_per_request') or 0.0:.6f} ms "
             f"per request), outcomes {outcomes}. The {idle} calls that found an unchanged "
-            f"signature are the cheap ones per call (p50 {reload.get('p50_ms') or 0.0:.2f} ms) "
+            f"corpus version are cheap per call (p50 {reload.get('p50_ms') or 0.0:.2f} ms) "
             f"but they are the frequent ones, so they dominate that total; only "
             f"{reload.get('count', 0) - idle} of the calls refreshed anything."
         )

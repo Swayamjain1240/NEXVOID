@@ -50,10 +50,10 @@ repository is not reproducible, this receipt is the answer.
 | second refusal signal: v3 0.50 → 0.67, v2 0.17 → 0.33, no answers lost | `results/support.md` |
 | corpus-derived expansion: fitted 2.5, v1 answer 0.96 → 1.00 but v3 refusal 0.67 → 0.50, not adopted | `results/expansion.md` |
 | second session of the same load curve (17.35 ms p95 at 10 users, 219 of 5,000 shed at 50) | `results/bench-second-session.md` |
-| soak through a live ingest (10 min at 10 users, p95 23.96 ms, 30 appends, 0 shed, 0 failures) | `results/soak-writer.md` |
-| control for that soak: the same writes into a tenant nobody reads (p95 21.62 ms, served corpus unchanged) | `results/soak-writer-control.md` |
-| the view-size arm: the same 48 documents held still (p95 25.24 ms), which is most of what the reload was being credited for | `results/soak-pregrown.md` |
-| the reload path measured directly (600 calls, 3,031 ms, 29 doing work, 0.0059 ms per request; also on `/v1/metrics`) | `results/soak-writer.md` |
+| soak through a live ingest (10 min at 10 users, p95 23.70 ms, 30 appends, 0 shed, 0 failures) | `results/soak-writer.md` |
+| control for that soak: the same writes into a tenant nobody reads (p95 28.18 ms, served corpus unchanged) - above the writer in that session, which the report shows is host variance rather than a cost of writing | `results/soak-writer-control.md` |
+| the view-size arm: the same 48 documents held still (p95 24.67 ms); the three arms bracket the tail and do not divide it, see the report | `results/soak-pregrown.md`, `results/soak.md` |
+| the reload path measured directly (600 calls, 1,793 ms after M30's corpus version, 3,031 ms before; 29 doing work, 0.0033 ms per request; also on `/v1/metrics`) | `results/soak-writer.md` |
 | answer selection: topic-list answers 8 → 0, top-1 from the right document 20/24 · 12/12 · 11/12 | `results/answer_selection.md` |
 | fusion depth: offline hybrid 0.88 → 0.92 (NFR-04 met), and the FR-11 counterfactual | `results/fusion.md` |
 | phrase-level novelty on a fresh v4 set: refused, it also refuses answerable questions | `results/phrase.md` |
@@ -72,7 +72,7 @@ repository is not reproducible, this receipt is the answer.
 | `ATLAS_MAX_WAITING` | 64 | requests allowed to wait for a slot |
 | `ATLAS_ADMISSION_WAIT_MS` | 25 | how long a waiter waits before `503 OVERLOADED` |
 | `ATLAS_CACHE_SIZE` | 256 | exact-answer cache entries per process; 0 disables it (the load reports set 0) |
-| `ATLAS_RELOAD_MS` | 1000 | how often a serving process checks the store for an ingest; 0 disables the check |
+| `ATLAS_RELOAD_MS` | 1000 | how often a serving process checks the store for an ingest; 0 disables the check. The check is one row read of a trigger-maintained `corpus_version`, not a re-hash of the corpus |
 
 `atlas.cli serve --workers N` runs N processes behind one listening socket (the portable form of
 `SO_REUSEPORT`; Windows has no such option). Each worker has its own store, index, admission bound

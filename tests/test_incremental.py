@@ -155,3 +155,27 @@ def _ask(base_url, query):
     url = f"{base_url}/v1/ask?q={urllib.parse.quote(query)}"
     with urllib.request.urlopen(url, timeout=5) as response:
         return json.loads(response.read())
+
+
+def test_the_corpus_version_moves_only_when_the_corpus_does(mini_store, tmp_path):
+    """M30: the reload check reads a counter, so the counter has to move on any write.
+
+    The triggers live in the schema rather than in `upsert_document`, which is the point: a
+    second connection or the ingest CLI moves the counter too. What must not move it is a
+    re-ingest of unchanged content, because that is the case the check exists to skip.
+    """
+    tenant = "campus"
+    start = mini_store.corpus_version(tenant)
+    assert start >= 1  # the fixture's 18 documents each moved it
+    assert mini_store.corpus_version("campus-control") == 0  # per tenant, not global
+
+    assert _add(mini_store, tmp_path, "library-rules.md", NEW_DOC) > 0
+    added = mini_store.corpus_version(tenant)
+    assert added > start
+
+    assert _add(mini_store, tmp_path, "library-rules.md", NEW_DOC) == 0  # unchanged: no write
+    assert mini_store.corpus_version(tenant) == added
+
+    revised = NEW_DOC.replace("four books at a time", "three books at a time")
+    _add(mini_store, tmp_path, "library-rules.md", revised)
+    assert mini_store.corpus_version(tenant) > added

@@ -257,19 +257,17 @@ rather than one question. One question is now 0.0333, and v6 is the mirror set: 
 answered** at the shipped theta, so false refusals are 0/30 [0, 0.114] - the gate's error is
 entirely on the unseen-topic side, now at 3.3 points instead of a sixth.
 
-`results/soak-writer.md`: 10 minutes at 10 users with a write every 20 s - **511,751 requests,
-0 shed, 0 failures, p95 23.96 ms** against 18.19 ms for the short curve - while 30 documents were
-appended (corpus 18 -> 48 documents, 124 chunks) at an ingest p95 of 23.94 ms with 0 errors.
-Three arms separate that +5.76 ms. The control (`soak-writer-control`: the same writes into a
-tenant nobody reads) reads **21.62 ms**, so about **+3.43 ms** is writing beside the service. The
-pre-grown arm (`soak-pregrown`: the same 48 documents held still, nothing else running) reads
-**25.24 ms**, so the full view-size term is **+7.05 ms**; the writer soak sits between the two,
-which is what a view averaging half its final size implies. The reload is counted rather than
-inferred: **600 calls, 3,031 ms in total, p50 3.45 ms, p95 13.35 ms, 29 of them doing any work**
-- **0.0059 ms per request**. M28's first reading called +3.06 ms "the reload and the corpus
-growth"; the arms show the growth is the cost and the reload is two orders of magnitude smaller.
-The counters also expose a cost that was invisible before: an *unchanged* signature check costs
-about 3.5 ms, so a busy tenant pays that every second whether or not anyone ingested (L23).
+`results/soak-writer.md` (re-taken in M30, after the reload check changed): 10 minutes at 10
+users with a write every 20 s - **536,115 requests, 0 shed, 0 failures, p95 23.70 ms** against
+18.19 ms for the short curve - while 30 documents were appended (corpus 18 -> 48 documents, 124
+chunks) at an ingest p95 of 31.07 ms with 0 errors. The reload is counted rather than inferred:
+**600 calls, 1,793 ms in total, p50 1.46 ms, p95 8.58 ms, 29 of them doing any work -
+0.0033 ms per request**. M28's first reading called +3.06 ms "the reload and the corpus growth";
+the reload is two orders of magnitude below that, so it is not the growth. Three arms were built
+to divide what is left, and in M30 **their ordering did not reproduce**: the control read above
+the writer, so the split is withdrawn rather than restated (see M30). The counters also exposed a
+cost that was invisible before: an *unchanged* check was paid every second whether or not anyone
+ingested, which M30 replaced (L23).
 
 **What it does not settle:** v5 and v6 measure the gate more precisely, they do not make it pass -
 FR-17 stays open at L1, and v6 answers everything, which is a fact about this corpus's answerable
@@ -277,6 +275,53 @@ questions rather than a general claim. The three load arms are one session, and 
 noise on p95 is about 1 ms, which is why the reload is quoted from its counters rather than from a
 difference between arms. The writer appends new documents only; a revision, a closed window or a
 delete still rebuilds (L21), and the appended documents exist to be ingested, not answered.
+
+---
+
+## M30 — The reload check in O(1), and a split that did not reproduce
+
+**Why:** L23 named a real cost - the M29 counters showed 600 reload calls costing 3,031 ms over
+ten minutes at 10 users, and 2,916 ms of that in a run with **no ingest at all**, so an unchanged
+corpus was being re-read and re-hashed every second. The pre-grown report also could not show
+what it was serving: its table printed the 30 documents the arm had ingested and not the 48 the
+run then served.
+
+**Changes**
+
+- `src/atlas/schema.py`: a `corpus_version` table kept by three triggers on `documents`
+  (INSERT/UPDATE/DELETE), so any writer moves it - the ingest CLI, a second connection, anything -
+  and no caller has to remember to.
+- `Store.corpus_version(tenant)` replaces `corpus_signature()`; `HybridIndex.refresh()` reads the
+  version row, compares it with the copy it holds, and only queries documents when it moved.
+- `bench/sweep.py` records `documents_before`, `documents_after` and `chunks_after` for every arm
+  and prints one global `served corpus` row, so the pre-grown table ends at
+  `48 -> 48 documents (124 chunks)` instead of the 30 it ingested. The three-arm table is also
+  rendered from what the arms measured: it says whether the ordering the split needs held, instead
+  of computing a decomposition that assumes it.
+
+**Measured.** In isolation the check is **26.9 µs → 6.3 µs** at 18 documents (3,000 iterations),
+and the version row does not grow with the corpus the way a re-hash does. In service the same 600
+calls cost **3,031 → 1,793 ms** total and **3.45 → 1.46 ms** p50, or 0.0059 → 0.0033 ms per
+request: -41% on a path that was never visible in a p95. The residual is not the check - 6 µs
+measured alone - but a request thread waiting for the connection under ten users of load, which is
+why L23 asks for the check to leave the request thread rather than to get cheaper again.
+
+**A claim withdrawn.** The three arms were re-run on the new code, 600 s each: writer **23.70 ms**,
+control **28.18 ms**, pre-grown **24.67 ms**. The control now reads *above* the writer, where M29
+read 21.62 against 23.96, and it ran at **761 rps** against the writer's **894** - 15% lower
+throughput for a run that does the same work plus writes nobody reads. Against M29 the control
+moved +6.55 ms while writer and pre-grown moved -0.26 and -0.57, so the outlier is the arm, not
+the code. With ±4.5 ms between arms and 2-3 ms being attributed, one 10-minute session per arm
+cannot divide writing from view size: `results/soak.md` now says exactly that and quotes only what
+the counters measure independently of the arms (the reload), plus a bracket for the rest. M28/M29's
+"+3.43 ms writing, view size the remainder" is **not** replaced with a new division - it is
+withdrawn as unmeasured, and the arms remain committed as brackets (L13, L19).
+
+**What it does not settle:** the split. A machine that gives the same arm 6.5 ms of slide between
+sessions needs interleaved repetitions of each arm to separate 2-3 ms, which this plan does not
+authorise on a shared desktop. What it does settle: the reload check is now one row read, it is
+no longer the largest term it was accused of being, and every arm's report states the corpus it
+actually served.
 
 ---
 

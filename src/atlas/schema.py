@@ -35,6 +35,28 @@ CREATE TABLE IF NOT EXISTS chunks (
 );
 CREATE INDEX IF NOT EXISTS idx_chunks_tenant ON chunks (tenant_id);
 CREATE INDEX IF NOT EXISTS idx_chunks_doc ON chunks (tenant_id, doc_id);
+-- M30: a corpus version per tenant, moved by the write itself rather than recomputed by the
+-- reader. Triggers rather than a call in `Store.upsert_document`, so a writer that bypasses
+-- this package - a bulk loader, a migration script, a person with sqlite3 - still moves it.
+CREATE TABLE IF NOT EXISTS corpus_version (
+    tenant_id TEXT    PRIMARY KEY,
+    version   INTEGER NOT NULL DEFAULT 0
+);
+CREATE TRIGGER IF NOT EXISTS corpus_version_insert AFTER INSERT ON documents
+BEGIN
+    INSERT INTO corpus_version (tenant_id, version) VALUES (NEW.tenant_id, 1)
+    ON CONFLICT(tenant_id) DO UPDATE SET version = version + 1;
+END;
+CREATE TRIGGER IF NOT EXISTS corpus_version_update AFTER UPDATE ON documents
+BEGIN
+    INSERT INTO corpus_version (tenant_id, version) VALUES (NEW.tenant_id, 1)
+    ON CONFLICT(tenant_id) DO UPDATE SET version = version + 1;
+END;
+CREATE TRIGGER IF NOT EXISTS corpus_version_delete AFTER DELETE ON documents
+BEGIN
+    INSERT INTO corpus_version (tenant_id, version) VALUES (OLD.tenant_id, 1)
+    ON CONFLICT(tenant_id) DO UPDATE SET version = version + 1;
+END;
 """
 
 # Applied only when the column is absent, so opening an old database twice is a no-op.
